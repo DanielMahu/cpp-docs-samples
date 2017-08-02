@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "taq.pb.h"
+#include "parse_taq_line.h"
 
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <google/rpc/status.pb.h>
@@ -30,10 +30,6 @@ namespace {
 // ... save ourselves some typing ...
 namespace bigtable = ::google::bigtable::v2;
 
-// Parse a line from the souce file ane turn it into a KV pair.
-std::pair<std::string, std::string> parse_taq_line(int lineno,
-                                                   std::string const& line);
-
 // Perform a Bigtable::MutateRows() request until all mutations complete.
 void mutate_with_retries(bigtable::Bigtable::Stub& bt_stub,
 			 bigtable::MutateRowsRequest& req);
@@ -48,7 +44,7 @@ int main(int argc, char* argv[]) try {
     std::cerr
         << "Usage: create_table <project_id> <instance_id> <table> <filename>"
         << std::endl;
-    return 1;
+   return 1;
   }
   char const* project_id = argv[1];
   char const* instance_id = argv[2];
@@ -85,14 +81,20 @@ int main(int argc, char* argv[]) try {
   request.set_table_name(table_name);
   for (int lineno = 1; lineno != max_lines and not is.eof() and is; ++lineno) {
     std::getline(is, line, '\n');
-    auto kv = parse_taq_line(lineno, line);
+    auto q = bigtable_api_samples::parse_taq_line(lineno, line);
     // ... add one more entry to the batch request ...
     auto& entry = *request.add_entries();
-    entry.set_row_key(std::move(kv.first));
+    entry.set_row_key(std::to_string(q.timestamp_ns()) + "/" + q.ticker());
     auto& set_cell = *entry.add_mutations()->mutable_set_cell();
     set_cell.set_family_name("taq");
-    set_cell.set_column_qualifier("message");
-    set_cell.set_value(std::move(kv.second));
+    set_cell.set_column_qualifier("quote");
+    std::string value;
+    if (not q.SerializeToString(&value)) {
+      std::ostringstream os;
+      os << "in line #" << lineno << " could not serialize quote";
+      throw std::runtime_error(os.str());
+    }
+    set_cell.set_value(std::move(value));
     // ... we use the timestamp field as a simple revision count in
     // this example, so set it to 0.  The actual timestamp of the
     // quote is stored in the key ...
@@ -119,56 +121,6 @@ int main(int argc, char* argv[]) try {
 }
 
 namespace {
-// TODO(coryan) - this should return a proto representing the TAQ data.
-std::pair<std::string, std::string> parse_taq_line(
-    int lineno, std::string const& line) try {
-  // The data is in pipe separated fields, starting with:
-  // Time: in HHMMSSNNNNNNNNN format (hours, minutes, seconds, nanoseconds).
-  // Exchange: a single character
-  // Symbol: a string
-  // Bid_Price: float
-  // Bid_Size: integer
-  // Offer_Price: float
-  // Offer_Size: integer
-  // ... and many other fields we ignore in this demo.
-  std::istringstream tokens(line);
-  tokens.exceptions(std::ios::failbit);
-  std::string tk;
-  std::getline(tokens, tk, '|');  // fetch the timestamp
-
-  // ... the key will be a combination of timestamp and symbol, to
-  // avoid hotspotting by either ...
-  std::string key = tk + "/";
-  std::getline(tokens, tk, '|');  // ignore the exchange
-  std::string symbol;
-  std::getline(tokens, symbol, '|');  // fetch the symbol
-  key += tk;
-
-  // ... the value is built using a proto
-  TAQ quote;
-  std::getline(tokens, tk, '|');
-  quote.set_bid_px(std::stod(tk));
-  std::getline(tokens, tk, '|');
-  quote.set_bid_qty(std::stol(tk));
-  std::getline(tokens, tk, '|');
-  quote.set_offer_px(std::stod(tk));
-  std::getline(tokens, tk, '|');
-  quote.set_offer_qty(std::stol(tk));
-
-  std::string value;
-  if (not quote.SerializeToString(&value)) {
-    std::ostringstream os;
-    os << "could not serialize quote at line #" << lineno << "(" << line << ")";
-    throw std::runtime_error(os.str());
-  }
-
-  return std::make_pair(std::move(key), std::move(value));
-} catch (std::exception const& ex) {
-  std::ostringstream os;
-  os << ex.what() << " in line #" << lineno << " (" << line << ")";
-  throw std::runtime_error(os.str());
-}
-
 bool should_retry(int code) {
   return (code == grpc::ABORTED or code == grpc::UNAVAILABLE
 	  or code == grpc::DEADLINE_EXCEEDED);
