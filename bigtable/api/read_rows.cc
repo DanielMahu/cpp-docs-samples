@@ -28,12 +28,12 @@
 #include <sstream>
 #include <thread>
 
-// We want to show the correct way to receive a large Bigtable cell
-// value in ReadRows().  Bigtable can break down such cell values
-// across multiple messages, which requires reassembly of the result.
-// We assume a table has been populated using the upload_taq_batch
-// example, query a few of the rows and calculate an (un)interesting
-// value derived from that data.
+// We want to show the correct way to receive a Bigtable cell value in
+// ReadRows().  Bigtable can break down cell values across multiple
+// messages, which requires reassembly of the result.  We assume a
+// table has been populated using the upload_taq_batch example, query
+// a few of the rows and calculate an (un)interesting value derived
+// from that data.
 int main(int argc, char* argv[]) try {
   // ... a more interesting application would use getopt(3),
   // getopt_long(3), or Boost.Options to parse the command-line, we
@@ -74,17 +74,19 @@ int main(int argc, char* argv[]) try {
   // the query ...
   bigtable::ReadRowsRequest request;
   request.set_table_name(table_name);
-#if 0
-  // ... we only want the "quotes" column from the "taq" coolumn
-  // family ...
-  auto& filter = *request.mutable_filter()->mutable_chain()->add_filters();
-  filter.set_family_name_regex_filter("taq");
-  filter.set_column_qualifier_regex_filter("quotes");
-  filter.mutable_timestamp_range_filter()->set_start_timestamp_micros(0);
-  filter.mutable_timestamp_range_filter()->set_end_timestamp_micros(1);
-#endif
 
-  // ... the magic values "A" and "AA" happens to be the first two
+  // ... show how to use filters, there are probably several ways to do this ...
+  auto& predicate = *request.mutable_filter()->mutable_condition()->mutable_predicate_filter();
+  // ... if the cell is in the "taq" column family ...
+  predicate.set_family_name_regex_filter("taq");
+  // ... and the cell is in the "quotes" column ...
+  predicate.set_column_qualifier_regex_filter("quotes");
+  // ... then accept it ...
+  auto& true_filter = *request.mutable_filter()->mutable_condition()->mutable_true_filter();
+  true_filter.set_pass_all_filter(true);
+  // ... implicity the cell is filtered out otherwise ...
+
+  // ... the magic values "A" and "AA" happen to be the first two
   // symbols in the TAQ file used in these examples.  That provides
   // enough complexity to make the example interesting, but not so
   // much that it becomes overwhelming.  A future example will show
