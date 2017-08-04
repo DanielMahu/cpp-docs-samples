@@ -1,5 +1,6 @@
 #include "parse_taq_line.h"
 
+#include <chrono>
 #include <sstream>
 
 namespace bigtable_api_samples {
