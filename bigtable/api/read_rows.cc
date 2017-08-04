@@ -99,7 +99,6 @@ int main(int argc, char* argv[]) try {
   std::string current_row_key;
   std::string current_column_family;
   std::string current_column;
-  std::int64_t current_timestamp;
   std::deque<std::string> chunks;
   // ... receive the streaming response ...
   bigtable::ReadRowsResponse response;
@@ -123,7 +122,6 @@ int main(int argc, char* argv[]) try {
       if (cell_chunk.timestamp_micros() != 0) {
 	throw std::runtime_error("strange, only the 0 timestamp expected in the query");
       }
-      current_timestamp = cell_chunk.timestamp_micros();
       chunks.emplace_back(std::move(*cell_chunk.mutable_value()));
       if (cell_chunk.commit_row()) {
 	// ... process this cell, we want to convert the sequence of
@@ -154,18 +152,19 @@ int main(int argc, char* argv[]) try {
 	Quotes quotes;
 	quotes.MergePartialFromCodedStream(&input_stream);
 	// ... and now we can print something nice ...
-	if (quotes.bid_px_size() != quotes.offer_px_size()) {
-	  std::cerr << current_row_key << ": mismatched sizes bid="
+	if (quotes.bid_px_size() != quotes.offer_px_size() or quotes.bid_px_size() == 0) {
+	  std::cerr << current_row_key << ": mismatched or zero sizes bid="
 		    << quotes.bid_px_size() << ", offer=" << quotes.offer_px_size()
 		    << std::endl;
 	} else {
-	  double spread = 0;
-	  for (std::size_t i = 0; i != quotes.offer_px_size(); ++i) {
-	    spread += quotes.offer_px(i) - quotes.bid_px(i);
-	  }
-	  spread /= quotes.offer_px_size();
+	  double bid_px_sum =
+	    std::accumulate(quotes.bid_px().begin(), quotes.bid_px().end(), 0);
+	  double offer_px_sum =
+	    std::accumulate(quotes.offer_px().begin(), quotes.offer_px().end(), 0);
+	  double average_spread =
+	    (offer_px_sum - bid_px_sum) / quotes.offer_px_size();
 	  std::cout << current_row_key << ": average spread="
-		    << spread << ", count=" << quotes.offer_px_size()
+		    << average_spread << ", count=" << quotes.offer_px_size()
 		    << std::endl;
 	}
       }
