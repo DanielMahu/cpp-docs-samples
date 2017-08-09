@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) try {
   std::string current_row_key;
   std::string current_column_family;
   std::string current_column;
-  std::deque<std::string> chunks;
+  std::string current_value;
   // ... receive the streaming response ...
   bigtable::ReadRowsResponse response;
   while (stream->Read(&response)) {
@@ -120,37 +120,16 @@ int main(int argc, char* argv[]) try {
       if (cell_chunk.timestamp_micros() != 0) {
 	throw std::runtime_error("strange, only the 0 timestamp expected in the query");
       }
-      chunks.emplace_back(std::move(*cell_chunk.mutable_value()));
+      if (cell_chunk.value_size() > 0) {
+	current_value.reserve(cell_chunk.value_size());
+      }
+      current_value.append(cell_chunk.value());
       if (cell_chunk.commit_row()) {
-	// ... process this cell, we want to convert the sequence of
-	// chunks into a Quotes proto, to do so we need to create the
-	// right type of google::protobuf::io::CodedStream ...
-	namespace io = google::protobuf::io;
-	// ... first create a vector with a zero copy stream for each
-	// chunk we received, user a smart pointer to automatically
-	// delete them ...
-	std::vector<std::shared_ptr<io::ZeroCopyInputStream>> streams_holder;
-	streams_holder.reserve(chunks.size());
-	for (auto const& c : chunks) {
-	  streams_holder.push_back(std::make_shared<io::ArrayInputStream>(c.data(), c.size()));
-	}
-	// ... then put the raw pointers into a contiguous buffer,
-	// because the google::protobuf::io::ConcantenatingInputStream
-	// requires an array ...
-	std::vector<io::ZeroCopyInputStream*> streams;
-	streams.reserve(streams_holder.size());
-	for (auto& s : streams_holder) {
-	  streams.push_back(s.get());
-	}
-	// ... then create a concatenating stream ...
-	io::ConcatenatingInputStream concat(streams.data(), streams.size());
-	// ... and wrap it into a coded stream ...
-	io::CodedInputStream input_stream(&concat);
-	// ... and now one can decode the stream ...
+	// ... process this cell, we want to convert the value into a Quotes proto ...
 	Quotes quotes;
-	quotes.MergePartialFromCodedStream(&input_stream);
-	// ... and now we can print something nice ...
-	if (quotes.bid_px_size() != quotes.offer_px_size() or quotes.bid_px_size() == 0) {
+	if (not quotes.ParseFromString(current_value)) {
+	  std::cerr << current_row_key << ": ParseFromString() failed" << std::endl;
+	} else if (quotes.bid_px_size() != quotes.offer_px_size() or quotes.bid_px_size() == 0) {
 	  std::cerr << current_row_key << ": mismatched or zero sizes bid="
 		    << quotes.bid_px_size() << ", offer=" << quotes.offer_px_size()
 		    << std::endl;
@@ -167,7 +146,7 @@ int main(int argc, char* argv[]) try {
 	}
       }
       if (cell_chunk.reset_row()) {
-	chunks.clear();
+	current_value.clear();
       }
     }
   }
