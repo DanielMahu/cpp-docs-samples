@@ -134,6 +134,28 @@ void append_to_request(bigtable::MutateRowsRequest& request,
   set_cell.set_timestamp_micros(0);
 }
 
+void append_to_request(bigtable::MutateRowsRequest& request,
+                       std::string const& yyyymmdd,
+		       Trades const& trades) {
+  // ... add one more entry to the batch request ...
+  auto& entry = *request.add_entries();
+  entry.set_row_key(yyyymmdd + "/" + trades.ticker());
+  auto& set_cell = *entry.add_mutations()->mutable_set_cell();
+  set_cell.set_family_name("taq");
+  set_cell.set_column_qualifier("trades");
+  std::string value;
+  if (not trades.SerializeToString(&value)) {
+    std::ostringstream os;
+    os << "could not serialize quotes for " << trades.ticker();
+    throw std::runtime_error(os.str());
+  }
+  set_cell.mutable_value()->swap(value);
+  // ... we use the timestamp field as a simple revision count in
+  // this example, so set it to 0.  The actual timestamp of the
+  // quote is stored in the key ...
+  set_cell.set_timestamp_micros(0);
+}
+
 bool should_retry(int code) {
   return (code == grpc::ABORTED or code == grpc::UNAVAILABLE
 	  or code == grpc::DEADLINE_EXCEEDED);
@@ -269,6 +291,52 @@ void upload_trades(std::string const& table_name,
 		   std::string const& filename,
 		   int report_progress_rate,
 		   int batch_size) {
+  auto creds = grpc::GoogleDefaultCredentials();
+  // ... notice that Bigtable has separate endpoints for different APIs,
+  // we are going to upload some data, so the correct endpoint is:
+  auto channel = grpc::CreateChannel("bigtable.googleapis.com", creds);
+
+  std::unique_ptr<bigtable::Bigtable::Stub> bt_stub(
+      bigtable::Bigtable::NewStub(channel));
+
+  std::ifstream is(filename);
+  std::string line;
+  // ... skip the header line in the file ...
+  std::getline(is, line, '\n');
+
+  bigtable::MutateRowsRequest request;
+  request.set_table_name(table_name);
+  Trades trades;
+  int lineno = 1;
+  for (; not is.eof() and is; ++lineno) {
+    std::getline(is, line, '\n');
+    auto t = bigtable_api_samples::parse_taq_trade(lineno, line);
+    if (trades.ticker() != t.ticker()) {
+      if (not trades.ticker().empty()) {
+	append_to_request(request, yyyymmdd, trades);
+      }
+      trades.set_ticker(t.ticker());
+      trades.clear_timestamp_ns();
+      trades.clear_px();
+      trades.clear_qty();
+      trades.clear_sale_condition();
+    }
+    trades.add_timestamp_ns(t.timestamp_ns());
+    trades.add_px(t.px());
+    trades.add_qty(t.qty());
+    trades.add_sale_condition(t.sale_condition());
+
+    if (request.entries_size() >= batch_size) {
+      mutate_with_retries(*bt_stub, request);
+    }
+    if (lineno % report_progress_rate == 0) {
+      std::cout << lineno << " quotes uploaded so far" << std::endl;
+    }
+  }
+  // ... CS101: the last batch needs to be uploaded too ...
+  append_to_request(request, yyyymmdd, trades);
+  mutate_with_retries(*bt_stub, request);
+  std::cout << lineno << " trades successfully uploaded" << std::endl;
 }
 
 }  // anonymous namespace
