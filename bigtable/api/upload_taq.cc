@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) try {
   std::getline(is, line, '\n');  // ... skip the header ...
   for (int lineno = 1; lineno != max_lines and not is.eof() and is; ++lineno) {
     std::getline(is, line, '\n');
-    auto q = bigtable_api_samples::parse_taq_line(lineno, line);
+    auto q = bigtable_api_samples::parse_taq_quote(lineno, line);
     // ... insert a single row in each call, obviously this is not
     // very efficient, the upload_taq_batch.cc demo shows how to
     // update multiple rows at a time ...

@@ -132,5 +132,8 @@ target_link_libraries(upload_taq googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES
 add_executable(upload_taq_batch upload_taq_batch.cc parse_taq_line.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
 target_link_libraries(upload_taq_batch googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
+add_executable(upload_taq_full upload_taq_full.cc parse_taq_line.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
+target_link_libraries(upload_taq_full googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
+
 add_executable(read_rows read_rows.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
 target_link_libraries(read_rows googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})

@@ -54,3 +54,40 @@ message Quotes {
   // The best offer quantiy
   repeated int32 offer_qty = 6;
 }
+
+// Specifies how a TAQ trade is stored in the Bigtable example
+message Trade {
+  // The symbol or ticker for this quote
+  string ticker = 1;
+
+  // The timestamp, as nanoseconds since midnight
+  int64 timestamp_ns = 2;
+
+  // The price of the trade
+  double px = 3;
+
+  // The trade quantity
+  int32 qty = 4;
+
+  // The trade condition
+  string sale_condition = 5;
+}
+
+// Specifies how a sequence of TAQ trades for the same ticker are stored in the
+// Bigtable example
+message Trades {
+  // The symbol or ticker for this quote
+  string ticker = 1;
+
+  // The timestamp, as nanoseconds since midnight
+  repeated int64 timestamp_ns = 2;
+
+  // The price of the trade
+  repeated double px = 3;
+
+  // The trade quantity
+  repeated int32 qty = 4;
+
+  // The trade condition
+  repeated string sale_condition = 5;
+}

@@ -39,6 +39,20 @@ void append_to_request(bigtable::MutateRowsRequest& request,
 void mutate_with_retries(bigtable::Bigtable::Stub& bt_stub,
 			 bigtable::MutateRowsRequest& req);
 
+// Upload a file of TAQ quotes to a given table
+void upload_quotes(std::string const& table_name,
+		   std::string const& yyyymmdd,
+		   std::string const& filename,
+		   int report_progress_rate,
+		   int batch_size);
+
+// Upload a file of TAQ trades to a given table
+void upload_trades(std::string const& table_name,
+		   std::string const& yyyymmdd,
+		   std::string const& filename,
+		   int report_progress_rate,
+		   int batch_size);
+
 }  // anonymous namespace
 
 // We want to show a more efficient way to update rows in Bigtable,
@@ -62,9 +76,9 @@ int main(int argc, char* argv[]) try {
   // ... a more interesting application would use getopt(3),
   // getopt_long(3), or Boost.Options to parse the command-line, we
   // want to keep things simple in the example ...
-  if (argc != 6) {
+  if (argc != 7) {
     std::cerr
-        << "Usage: create_table <project_id> <instance_id> <table> <yyyymmdd> <filename>"
+        << "Usage: create_table <project_id> <instance_id> <table> <yyyymmdd> <quotes-file> <trades-file>"
         << std::endl;
    return 1;
   }
@@ -72,73 +86,21 @@ int main(int argc, char* argv[]) try {
   std::string const instance_id = argv[2];
   std::string const table_id = argv[3];
   std::string const yyyymmdd = argv[4];
-  std::string const filename = argv[5];
-
-  auto creds = grpc::GoogleDefaultCredentials();
-  // ... notice that Bigtable has separate endpoints for different APIs,
-  // we are going to upload some data, so the correct endpoint is:
-  auto channel = grpc::CreateChannel("bigtable.googleapis.com", creds);
-
-  std::unique_ptr<bigtable::Bigtable::Stub> bt_stub(
-      bigtable::Bigtable::NewStub(channel));
+  std::string const quotes_filename = argv[5];
+  std::string const trades_filename = argv[6];
 
   std::string table_name = std::string("projects/") + project_id +
                            "/instances/" + instance_id + "/tables/" + table_id;
 
-  // ... we just upload the first max_lines from the input file
-  // because otherwise the demo can take hours to finish uploading the
-  // data.  For very large uploads the application should use
-  // something like Cloud Dataflow, where the upload work is sharded
-  // across many clients, and should really take advantage of the
-  // batch APIs ...
-  int const max_lines_to_upload = 1000000;
   // ... every few lines print out the progress because the author is
   // impatient ...
-  int const report_progress_rate = 20000;
+  int const report_progress_rate = 50000;
   // ... we upload batch_size rows at a time, nothing magical about
   // 1024, just a nice round number picked by the author ...
   int const batch_size = 1024;
 
-  std::ifstream is(filename);
-  std::string line;
-  // ... skip the header line in the file ...
-  std::getline(is, line, '\n');
-
-  bigtable::MutateRowsRequest request;
-  request.set_table_name(table_name);
-  Quotes quotes;
-  int lineno = 1;
-  for (; lineno != max_lines_to_upload and not is.eof() and is; ++lineno) {
-    std::getline(is, line, '\n');
-    auto q = bigtable_api_samples::parse_taq_quote(lineno, line);
-    if (quotes.ticker() != q.ticker()) {
-      if (not quotes.ticker().empty()) {
-	append_to_request(request, yyyymmdd, quotes);
-      }
-      quotes.set_ticker(q.ticker());
-      quotes.clear_timestamp_ns();
-      quotes.clear_bid_px();
-      quotes.clear_bid_qty();
-      quotes.clear_offer_px();
-      quotes.clear_offer_qty();
-    }
-    quotes.add_timestamp_ns(q.timestamp_ns());
-    quotes.add_bid_px(q.bid_px());
-    quotes.add_bid_qty(q.bid_qty());
-    quotes.add_offer_px(q.offer_px());
-    quotes.add_offer_qty(q.offer_qty());
-
-    if (request.entries_size() >= batch_size) {
-      mutate_with_retries(*bt_stub, request);
-    }
-    if (lineno % report_progress_rate == 0) {
-      std::cout << lineno << " quotes uploaded so far" << std::endl;
-    }
-  }
-  // ... CS101: the last batch needs to be uploaded too ...
-  append_to_request(request, yyyymmdd, quotes);
-  mutate_with_retries(*bt_stub, request);
-  std::cout << lineno << " quotes successfully uploaded" << std::endl;
+  upload_quotes(table_name, yyyymmdd, quotes_filename, report_progress_rate, batch_size);
+  upload_trades(table_name, yyyymmdd, quotes_filename, report_progress_rate, batch_size);
 
   return 0;
 } catch (std::exception const& ex) {
@@ -245,6 +207,68 @@ void mutate_with_retries(bigtable::Bigtable::Stub& bt_stub,
     retry_msg = ".";
   }
   throw std::runtime_error("Could not complete mutation after maximum retries");
+}
+
+void upload_quotes(std::string const& table_name,
+		   std::string const& yyyymmdd,
+		   std::string const& filename,
+		   int report_progress_rate,
+		   int batch_size) {
+  auto creds = grpc::GoogleDefaultCredentials();
+  // ... notice that Bigtable has separate endpoints for different APIs,
+  // we are going to upload some data, so the correct endpoint is:
+  auto channel = grpc::CreateChannel("bigtable.googleapis.com", creds);
+
+  std::unique_ptr<bigtable::Bigtable::Stub> bt_stub(
+      bigtable::Bigtable::NewStub(channel));
+
+  std::ifstream is(filename);
+  std::string line;
+  // ... skip the header line in the file ...
+  std::getline(is, line, '\n');
+
+  bigtable::MutateRowsRequest request;
+  request.set_table_name(table_name);
+  Quotes quotes;
+  int lineno = 1;
+  for (; not is.eof() and is; ++lineno) {
+    std::getline(is, line, '\n');
+    auto q = bigtable_api_samples::parse_taq_quote(lineno, line);
+    if (quotes.ticker() != q.ticker()) {
+      if (not quotes.ticker().empty()) {
+	append_to_request(request, yyyymmdd, quotes);
+      }
+      quotes.set_ticker(q.ticker());
+      quotes.clear_timestamp_ns();
+      quotes.clear_bid_px();
+      quotes.clear_bid_qty();
+      quotes.clear_offer_px();
+      quotes.clear_offer_qty();
+    }
+    quotes.add_timestamp_ns(q.timestamp_ns());
+    quotes.add_bid_px(q.bid_px());
+    quotes.add_bid_qty(q.bid_qty());
+    quotes.add_offer_px(q.offer_px());
+    quotes.add_offer_qty(q.offer_qty());
+
+    if (request.entries_size() >= batch_size) {
+      mutate_with_retries(*bt_stub, request);
+    }
+    if (lineno % report_progress_rate == 0) {
+      std::cout << lineno << " quotes uploaded so far" << std::endl;
+    }
+  }
+  // ... CS101: the last batch needs to be uploaded too ...
+  append_to_request(request, yyyymmdd, quotes);
+  mutate_with_retries(*bt_stub, request);
+  std::cout << lineno << " quotes successfully uploaded" << std::endl;
+}
+
+void upload_trades(std::string const& table_name,
+		   std::string const& yyyymmdd,
+		   std::string const& filename,
+		   int report_progress_rate,
+		   int batch_size) {
 }
 
 }  // anonymous namespace
