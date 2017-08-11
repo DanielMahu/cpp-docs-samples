@@ -94,13 +94,13 @@ int main(int argc, char* argv[]) try {
 
   // ... every few lines print out the progress because the author is
   // impatient ...
-  int const report_progress_rate = 50000;
+  int const report_progress_rate = 1000000;
   // ... we upload batch_size rows at a time, nothing magical about
   // 1024, just a nice round number picked by the author ...
   int const batch_size = 1024;
 
   upload_quotes(table_name, yyyymmdd, quotes_filename, report_progress_rate, batch_size);
-  upload_trades(table_name, yyyymmdd, quotes_filename, report_progress_rate, batch_size);
+  upload_trades(table_name, yyyymmdd, trades_filename, report_progress_rate, batch_size);
 
   return 0;
 } catch (std::exception const& ex) {
@@ -255,6 +255,9 @@ void upload_quotes(std::string const& table_name,
   int lineno = 1;
   for (; not is.eof() and is; ++lineno) {
     std::getline(is, line, '\n');
+    if (line.empty() or line.substr(0, 4) == "END|") {
+      break;
+    }
     auto q = bigtable_api_samples::parse_taq_quote(lineno, line);
     if (quotes.ticker() != q.ticker()) {
       if (not quotes.ticker().empty()) {
@@ -310,6 +313,9 @@ void upload_trades(std::string const& table_name,
   int lineno = 1;
   for (; not is.eof() and is; ++lineno) {
     std::getline(is, line, '\n');
+    if (line.empty() or line.substr(0, 4) == "END|") {
+      break;
+    }
     auto t = bigtable_api_samples::parse_taq_trade(lineno, line);
     if (trades.ticker() != t.ticker()) {
       if (not trades.ticker().empty()) {
@@ -330,7 +336,7 @@ void upload_trades(std::string const& table_name,
       mutate_with_retries(*bt_stub, request);
     }
     if (lineno % report_progress_rate == 0) {
-      std::cout << lineno << " quotes uploaded so far" << std::endl;
+      std::cout << lineno << " trades uploaded so far" << std::endl;
     }
   }
   // ... CS101: the last batch needs to be uploaded too ...

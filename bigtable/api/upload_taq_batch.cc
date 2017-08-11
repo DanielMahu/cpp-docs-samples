@@ -110,6 +110,9 @@ int main(int argc, char* argv[]) try {
   int lineno = 1;
   for (; lineno != max_lines_to_upload and not is.eof() and is; ++lineno) {
     std::getline(is, line, '\n');
+    if (line.empty() or line.substr(0, 4) == "END|") {
+      break;
+    }
     auto q = bigtable_api_samples::parse_taq_quote(lineno, line);
     if (quotes.ticker() != q.ticker()) {
       if (not quotes.ticker().empty()) {
