@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) try {
   // want to keep things simple in the example ...
   if (argc != 5) {
     std::cerr
-        << "Usage: create_table <project_id> <instance_id> <table_id> <date>"
+        << "Usage: read_rows <project_id> <instance_id> <table_id> <date>"
         << std::endl;
     return 1;
   }

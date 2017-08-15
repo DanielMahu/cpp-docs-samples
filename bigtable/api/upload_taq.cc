@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) try {
   // want to keep things simple in the example ...
   if (argc != 5) {
     std::cerr
-        << "Usage: create_table <project_id> <instance_id> <table> <filename>"
+        << "Usage: upload_taq <project_id> <instance_id> <table> <filename>"
         << std::endl;
     return 1;
   }

@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) try {
   // want to keep things simple in the example ...
   if (argc != 7) {
     std::cerr
-        << "Usage: create_table <project_id> <instance_id> <table> <yyyymmdd> <quotes-file> <trades-file>"
+        << "Usage: simulate_taq_capture <project_id> <instance_id> <table> <yyyymmdd> <quotes-file> <trades-file>"
         << std::endl;
    return 1;
   }

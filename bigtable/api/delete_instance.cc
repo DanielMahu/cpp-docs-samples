@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) try {
   // getopt_long(3), or Boost.Options to parse the command-line, we
   // want to keep things simple in the example ...
   if (argc != 3) {
-    std::cerr << "Usage: create_instance <project_id> <instance_id>"
+    std::cerr << "Usage: delete_instance <project_id> <instance_id>"
               << std::endl;
     return 1;
   }

@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) try {
   // want to keep things simple in the example ...
   if (argc != 6) {
     std::cerr
-        << "Usage: create_table <project_id> <instance_id> <table> <yyyymmdd> <filename>"
+        << "Usage: upload_taq_batch <project_id> <instance_id> <table> <yyyymmdd> <filename>"
         << std::endl;
    return 1;
   }
