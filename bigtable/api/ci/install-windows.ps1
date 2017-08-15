@@ -30,8 +30,8 @@ powershell -exec bypass scripts\bootstrap.ps1
 # ... if necessary, install grpc again.  Normally the packages are
 # cached by the CI system (appveyor) so this is not too painful ...
 .\vcpkg install zlib:x86-windows-static
-#.\vcpkg install openssl:x86-windows-static
-#.\vcpkg install protobuf:x86-windows-static
-#.\vcpkg install grpc:x86-windows-static
+.\vcpkg install openssl:x86-windows-static
+.\vcpkg install protobuf:x86-windows-static
+.\vcpkg install grpc:x86-windows-static
 
 cd ..\cpp-docs-samples
