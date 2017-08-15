@@ -68,7 +68,7 @@ These samples demonstrate how to call the [Google Cloud Bigtable API](https://cl
     make -j 2
     ```
 
-1.  **Run the examples**
+1.  **Run the admin API examples**
     ```console
     # This should be the name of the project you enabled billing and the APIs for.
     PROJECT=<your project here>
@@ -88,19 +88,31 @@ These samples demonstrate how to call the [Google Cloud Bigtable API](https://cl
 
     ./delete_table $PROJECT bt-test-instance my-table
 
-    ./create_table $PROJECT bt-test-instance daily
-    ./create_table $PROJECT bt-test-instance quote-per-row
-
-    ./resources/download_taq.sh
-
-    ./upload_taq $PROJECT bt-test-instance quote-per-row NBBO.txt
-
-    ./upload_taq_batch $PROJECT bt-test-instance quote-per-row 20161024 NBBO.txt
-
-    ./read_row $PROJECT bt-test-instance quote-per-row 20161024
-
     ./delete_instance $PROJECT bt-test-instance
 
     ./list_instances $PROJECT
     ```
 
+1.  **Run simple table API examples**
+    ```console
+    # Download the data used in the examples
+    ./resources/download_taq.sh
+
+    # Create an instance and table to store daily TAQ data
+    ./create_instance $PROJECT bt-test-daily cluster-01 us-east1-c
+    ./create_table $PROJECT bt-test-daily daily
+
+    ./upload_taq_batch $PROJECT bt-test-instance quote-per-row 20161024 NBBO.txt
+
+    ./read_rows $PROJECT bt-test-instance quote-per-row 20161024
+    ```
+
+1.  **Run the table API examples**
+    ```console
+    # Create an instance and table to store raw TAQ data
+    ./create_instance $PROJECT bt-test-raw cluster-02 us-east1-c
+    ./create_table $PROJECT bt-test-raw raw-quotes
+    ./create_table $PROJECT bt-test-raw raw-trades
+
+    ./simulate_taq_capture $PROJECT bt-test-raw 20161024 NBBO.time_sorted.txt TRADES.time_sorted.txt
+    ```

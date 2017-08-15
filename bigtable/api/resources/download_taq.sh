@@ -21,7 +21,10 @@ set -e
 curl ftp://ftp.nyxdata.com/Historical%20Data%20Samples/Daily%20TAQ%20Sample/EQY_US_ALL_NBBO_20161024.gz -o NBBO.txt.gz
 curl ftp://ftp.nyxdata.com/Historical%20Data%20Samples/Daily%20TAQ%20Sample/EQY_US_ALL_TRADE_20161024.gz -o TRADE.txt.gz
 
-gunzip NBBO.txt.gz
-gunzip TRADE.txt.gz
+for file in NBBO TRADE; do
+    gunzip ${file}.txt.gz
+    grep -v '^END' ${file}.txt | sort -t'|' -k1,1 -n  >${file}.time_sorted.txt
+    tail -1 ${file}.txt >>${file}.time_sorted.txt
+done
 
 exit 0
