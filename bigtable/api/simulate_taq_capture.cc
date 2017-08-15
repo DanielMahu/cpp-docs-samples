@@ -55,16 +55,24 @@ void upload_trades(std::string const& table_name,
 
 }  // anonymous namespace
 
-// We want to show a more efficient way to update rows in Bigtable,
-// batching multiple updates into a single request.
+// Upload data for read-write example.  We want to build up to an
+// example that reads and writes data from Bigtable in a single
+// application.  We build up from a (overly) simplified market data
+// ticker plant, where one application would capture trade and quote
+// data as it is received, and a second application then reads the
+// data and aggregates it into more usable form.
 //
-// We use TAQ data for the source, this is a text file, with fields
+// This program just concerns itself with simulating the data
+// capture.  Instead of the usual UDP protocols use for market data we
+// simply read from a TAQ file, this is a text file, with fields
 // separated by '|' characters (so really a CSV file with an uncommon
 // separator), with contents like this:
 //
 // timestamp|exchange|ticker|bid price|bid qty|offer price|offer qty|...
 // 093000123456789|K|GOOG|800.00|100|900.00|200|...
 // 093001123456789|K|GOOG|801.00|200|901.00|300|...
+// ...
+// END|20161024|78000000||...
 //
 // Each row represents a market data quote, each file represents a
 // different day of trading, so the timestamps are expressed in
