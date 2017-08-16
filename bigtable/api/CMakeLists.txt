@@ -137,3 +137,6 @@ target_link_libraries(read_rows googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES}
 
 add_executable(simulate_taq_capture simulate_taq_capture.cc parse_taq_line.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
 target_link_libraries(simulate_taq_capture googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
+
+add_executable(collate_taq collate_taq.cc parse_taq_line.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
+target_link_libraries(collate_taq googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
