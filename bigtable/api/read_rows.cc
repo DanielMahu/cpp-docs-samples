@@ -14,7 +14,6 @@
 
 #include "taq.pb.h"
 
-#include <google/bigtable/admin/v2/bigtable_table_admin.grpc.pb.h>
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
