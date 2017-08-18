@@ -91,34 +91,48 @@ int main(int argc, char* argv[]) try {
   // ... this example uses multiple threads because the author did not
   // have the patience to wait for a single thread to finish.  Nothing
   // is particularly interested in the use of multiple threads here ...
-  int constexpr quote_threads = 16;
-  int constexpr trade_threads = 4;
-  int constexpr pool_size = quote_threads + trade_threads;
+  int const quote_threads = 16;
+  int const trade_threads = 4;
 
-  std::future<void> upload_pool[pool_size];
-  int pid = 0;
+  std::map<std::string, std::future<void>> ops;
   for (int i = 0; i != trade_threads; ++i) {
-    upload_pool[pid++] = std::async(
-        std::launch::async, [&trade_uploader]() { trade_uploader.run(); });
+    std::ostringstream os;
+    os << "upload-trades[" << i << "]";
+    auto future = std::async(std::launch::async,
+                             [&trade_uploader]() { trade_uploader.run(); });
+    ops.emplace(os.str(), std::move(future));
   }
   for (int i = 0; i != quote_threads; ++i) {
-    upload_pool[pid++] = std::async(
-        std::launch::async, [&quote_uploader]() { quote_uploader.run(); });
+    std::ostringstream os;
+    os << "upload-quotes[" << i << "]";
+    auto future = std::async(std::launch::async,
+                             [&quote_uploader]() { quote_uploader.run(); });
+    ops.emplace(os.str(), std::move(future));
   }
 
-  auto trades =
+  ops.emplace(
+      "read-trades",
       std::async(std::launch::async, [trades_filename, &trade_uploader]() {
         read_trades_file(trades_filename, trade_uploader);
-      });
-  auto quotes =
+      }));
+
+  ops.emplace(
+      "read-quotes",
       std::async(std::launch::async, [quotes_filename, &quote_uploader]() {
         read_quotes_file(quotes_filename, quote_uploader);
-      });
+      }));
 
-  trades.get();
-  quotes.get();
-  for (int i = 0; i != pool_size; ++i) {
-    upload_pool[i].get();
+  // ... wait for the operations to complete and report any exceptions ...
+  for (auto& i : ops) {
+    try {
+      i.second.get();
+      std::cout << i.first << " completed successfully" << std::endl;
+    } catch (std::exception const& ex) {
+      std::cerr << "standard exception raised by " << i.first << ": "
+                << ex.what() << std::endl;
+    } catch (...) {
+      std::cerr << "unknown exception raised by " << i.first << std::endl;
+    }
   }
 
   return 0;
@@ -151,7 +165,7 @@ void read_quotes_file(std::string const& filename,
   uploader.shutdown();
   std::cout << "Finished reading quotes from " << filename << std::endl;
 }
-  
+
 void read_trades_file(std::string const& filename,
                       bigtable_api_samples::raw_taq_uploader<Trade>& uploader) {
   std::cout << "Reading trades from " << filename << std::endl;
