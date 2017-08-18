@@ -109,10 +109,15 @@ These samples demonstrate how to call the [Google Cloud Bigtable API](https://cl
 
 1.  **Run the table API examples**
     ```console
-    # Create an instance and table to store raw TAQ data
+    # Create an instance and tables to store raw TAQ data
     ./create_instance $PROJECT bt-test-raw cluster-02 us-east1-c
     ./create_table $PROJECT bt-test-raw raw-quotes
     ./create_table $PROJECT bt-test-raw raw-trades
 
+    # Upload the raw data, be patient this takes at least ~30 minutes.
     ./simulate_taq_capture $PROJECT bt-test-raw 20161024 NBBO.time_sorted.txt TRADES.time_sorted.txt
+
+    # Summarize the data by ticker.
+    ./create_table $PROJECT bt-test-raw daily
+    ./collate_taq_trades $PROJECT bt-test-raw 20161024
     ```
