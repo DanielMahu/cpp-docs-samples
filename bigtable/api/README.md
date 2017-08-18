@@ -114,5 +114,10 @@ These samples demonstrate how to call the [Google Cloud Bigtable API](https://cl
     ./create_table $PROJECT bt-test-raw raw-quotes
     ./create_table $PROJECT bt-test-raw raw-trades
 
+    # Upload the data, this takes at least 30 minutes, and might take longer, be patient.
     ./simulate_taq_capture $PROJECT bt-test-raw 20161024 NBBO.time_sorted.txt TRADES.time_sorted.txt
+
+    # Summarize the data by ticker.
+    ./create_table $PROJECT bt-test-raw daily
+    ./collate_taq $PROJECT bt-test-raw 20161024
     ```
