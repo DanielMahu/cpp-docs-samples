@@ -17,17 +17,16 @@
  *
  * Upload data for read-write example.  We want to build up to an
  * example that reads and writes data from Bigtable in a single
- * application (that is collate_taq_trades.cc).  In this program we
- * prepare two tables, one with trade data where each row contains a
- * single trade event.  A second table contains quote data where each row
- * contains a single quote event.  In the collate_taq_trades.cc
- * program we read the trades table to populate the "trades" column of
- * the "daily" table, where each row contains the summary information
- * for a single ticker.
+ * application (that is collate_taq.cc).  In this program we prepare
+ * two tables, one with trade data where each row contains a single
+ * trade event.  A second table contains quote data where each row
+ * contains a single quote event.  In the collate_taq.cc program we
+ * read those tables to create a single table where each row contains
+ * the full timeseries of trade and quotes for a single ticker.
  *
  * This particular program is not very interesting in terms of
  * learning about the bigtable APIs.  It just prepares the tables to
- * use in the collate_taq_trades.cc program.
+ * use in the collate_taq.cc program.
  *
  * While the main purpose of this example is to prepare the data, it
  * is inspired by real world applications where market data is first
