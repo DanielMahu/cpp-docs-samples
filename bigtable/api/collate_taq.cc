@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) try {
   // impatient ...
   int const report_progress_rate = 10000;
   // ... we upload batch_size rows at a time, nothing magical about
-  // 1024, just a nice round number picked by the author ...
+  // this number, just a nice round number picked by the author ...
   int const batch_size = 128;
 
   // ... use the default credentials, this works automatically if your
@@ -69,7 +69,8 @@ int main(int argc, char* argv[]) try {
   //  https://grpc.io/docs/guides/auth.html
   auto credentials = grpc::GoogleDefaultCredentials();
 
-  // ... create the table if needed ...
+  // ... the table names are fixed, just compute the prefix based on
+  // the instance name ...
   std::string table_prefix =
       "projects/" + project_id + "/instances/" + instance_id + "/tables/";
 
@@ -82,15 +83,13 @@ int main(int argc, char* argv[]) try {
   for (int i = 0; i != sizeof(cuts) - 1; ++i) {
     std::ostringstream os;
     os << "[" << cuts[i] << "," << cuts[i + 1] << ")";
-    auto trades = std::async(std::launch::async, [=]() {
-      collate_trades(credentials, table_prefix, cuts[i], cuts[i + 1], yyyymmdd,
-                     report_progress_rate, batch_size);
-    });
+    auto trades = std::async(std::launch::async, collate_trades, credentials,
+                             table_prefix, cuts[i], cuts[i + 1], yyyymmdd,
+                             report_progress_rate, batch_size);
     ops.emplace("trades " + os.str(), std::move(trades));
-    auto quotes = std::async(std::launch::async, [=]() {
-      collate_quotes(credentials, table_prefix, cuts[i], cuts[i + 1], yyyymmdd,
-                     report_progress_rate, batch_size);
-    });
+    auto quotes = std::async(std::launch::async, collate_quotes, credentials,
+                             table_prefix, cuts[i], cuts[i + 1], yyyymmdd,
+                             report_progress_rate, batch_size);
     ops.emplace("quotes " + os.str(), std::move(quotes));
     std::cout << "operations for range " << os.str() << " are launched"
               << std::endl;
