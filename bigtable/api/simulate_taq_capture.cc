@@ -43,6 +43,7 @@
 #include "raw_taq_uploader.h"
 
 #include <fstream>
+#include <future>
 
 namespace {
 // ... save ourselves some typing ...
@@ -93,28 +94,31 @@ int main(int argc, char* argv[]) try {
   int constexpr quote_threads = 16;
   int constexpr trade_threads = 4;
   int constexpr pool_size = quote_threads + trade_threads;
-  std::thread trades_pool[pool_size];
+
+  std::future<void> upload_pool[pool_size];
   int pid = 0;
   for (int i = 0; i != trade_threads; ++i) {
-    trades_pool[pid++] =
-        std::move(std::thread([&trade_uploader]() { trade_uploader.run(); }));
+    upload_pool[pid++] = std::async(
+        std::launch::async, [&trade_uploader]() { trade_uploader.run(); });
   }
   for (int i = 0; i != quote_threads; ++i) {
-    trades_pool[pid++] =
-        std::move(std::thread([&quote_uploader]() { quote_uploader.run(); }));
+    upload_pool[pid++] = std::async(
+        std::launch::async, [&quote_uploader]() { quote_uploader.run(); });
   }
 
-  std::thread trades([trades_filename, &trade_uploader]() {
-    read_trades_file(trades_filename, trade_uploader);
-  });
-  std::thread quotes([quotes_filename, &quote_uploader]() {
-    read_quotes_file(quotes_filename, quote_uploader);
-  });
+  auto trades =
+      std::async(std::launch::async, [trades_filename, &trade_uploader]() {
+        read_trades_file(trades_filename, trade_uploader);
+      });
+  auto quotes =
+      std::async(std::launch::async, [quotes_filename, &quote_uploader]() {
+        read_quotes_file(quotes_filename, quote_uploader);
+      });
 
-  trades.join();
-  quotes.join();
+  trades.get();
+  quotes.get();
   for (int i = 0; i != pool_size; ++i) {
-    trades_pool[i].join();
+    upload_pool[i].get();
   }
 
   return 0;
