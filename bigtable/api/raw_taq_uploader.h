@@ -108,11 +108,11 @@ class raw_taq_uploader {
                         std::to_string(t.timestamp_ns()));
       auto& set_cell = *entry.add_mutations()->mutable_set_cell();
       set_cell.set_family_name("taq");
-      set_cell.set_column_qualifier("trade");
+      set_cell.set_column_qualifier("event");
       std::string value;
       if (not t.SerializeToString(&value)) {
         std::ostringstream os;
-        os << "could not serialize trade for " << t.ticker() << " "
+        os << "could not serialize message for " << t.ticker() << " "
            << t.timestamp_ns();
         throw std::runtime_error(os.str());
       }
