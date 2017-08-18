@@ -36,9 +36,9 @@ Quote parse_taq_quote(int lineno, std::string const& line) try {
     os << "timestamp field (" << tk << ") is not in HHMMSSNNNNNNNNN format";
     throw std::runtime_error(os.str());
   }
-  int hh = std::stod(tk.substr(0, 2));
-  int mm = std::stod(tk.substr(2, 2));
-  int ss = std::stod(tk.substr(4, 2));
+  int hh = std::stoi(tk.substr(0, 2));
+  int mm = std::stoi(tk.substr(2, 2));
+  int ss = std::stoi(tk.substr(4, 2));
   long long nnn = std::stoll(tk.substr(6));
 
   using namespace std::chrono;
@@ -94,9 +94,9 @@ Trade parse_taq_trade(int lineno, std::string const& line) try {
     os << "timestamp field (" << tk << ") is not in HHMMSSNNNNNNNNN format";
     throw std::runtime_error(os.str());
   }
-  int hh = std::stod(tk.substr(0, 2));
-  int mm = std::stod(tk.substr(2, 2));
-  int ss = std::stod(tk.substr(4, 2));
+  int hh = std::stoi(tk.substr(0, 2));
+  int mm = std::stoi(tk.substr(2, 2));
+  int ss = std::stoi(tk.substr(4, 2));
   long long nnn = std::stoll(tk.substr(6));
 
   using namespace std::chrono;
