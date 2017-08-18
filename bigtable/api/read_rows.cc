@@ -24,6 +24,7 @@
 #include <ciso646>
 #include <deque>
 #include <fstream>
+#include <numeric>
 #include <sstream>
 #include <thread>
 
