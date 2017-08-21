@@ -1,2 +1,3 @@
-bigtable/api/build/
 .git/
+bigtable/api/googleapis/.git/
+bigtable/api/build/
