@@ -91,8 +91,8 @@ int main(int argc, char* argv[]) try {
   // ... this example uses multiple threads because the author did not
   // have the patience to wait for a single thread to finish.  Nothing
   // is particularly interested in the use of multiple threads here ...
-  int const quote_threads = 16;
-  int const trade_threads = 4;
+  int const quote_threads = 1;
+  int const trade_threads = 1;
 
   std::map<std::string, std::future<void>> ops;
   for (int i = 0; i != trade_threads; ++i) {

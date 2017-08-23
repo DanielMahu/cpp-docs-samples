@@ -102,9 +102,9 @@ These samples demonstrate how to call the [Google Cloud Bigtable API](https://cl
     ./create_instance $PROJECT bt-test-daily cluster-01 us-east1-c
     ./create_table $PROJECT bt-test-daily daily
 
-    ./upload_taq_batch $PROJECT bt-test-instance quote-per-row 20161024 NBBO.txt
+    ./upload_taq_batch $PROJECT bt-test-instance daily 20161024 NBBO.txt
 
-    ./read_rows $PROJECT bt-test-instance quote-per-row 20161024
+    ./read_rows $PROJECT bt-test-instance daily 20161024
     ```
 
 1.  **Run the table API examples**

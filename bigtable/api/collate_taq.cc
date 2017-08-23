@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "client.h"
 #include "taq.pb.h"
 
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
@@ -142,10 +143,6 @@ void append_to_request(bigtable::MutateRowsRequest& request,
   set_cell.set_timestamp_micros(0);
 }
 
-// Perform a Bigtable::MutateRows() request until all mutations complete.
-void mutate_with_retries(bigtable::Bigtable::Stub& bt_stub,
-                         bigtable::MutateRowsRequest& req);
-
 void collate_trades(std::shared_ptr<grpc::ChannelCredentials> credentials,
                     std::string const& table_prefix, char begin, char end,
                     std::string const& yyyymmdd, int report_progress_rate,
@@ -153,9 +150,10 @@ void collate_trades(std::shared_ptr<grpc::ChannelCredentials> credentials,
   // ... notice that Bigtable has separate endpoints for different APIs,
   // we are going to upload some data, so the correct endpoint is:
   auto channel = grpc::CreateChannel("bigtable.googleapis.com", credentials);
-
   std::unique_ptr<bigtable::Bigtable::Stub> bt_stub(
       bigtable::Bigtable::NewStub(channel));
+
+  bigtable_api_samples::client client(credentials);
 
   // ... prepare the request to update the destination table ...
   bigtable::MutateRowsRequest mutation;
@@ -232,7 +230,8 @@ void collate_trades(std::shared_ptr<grpc::ChannelCredentials> credentials,
           if (not trades.ticker().empty()) {
             append_to_request(mutation, yyyymmdd, "trades", trades);
             if (mutation.entries_size() >= batch_size) {
-              mutate_with_retries(*bt_stub, mutation);
+              client.mutate_rows(std::move(mutation), bigtable_api_samples::backoff_config());
+              mutation.set_table_name(table_prefix + "daily");
             }
           }
           trades.set_ticker(q.ticker());
@@ -258,7 +257,7 @@ void collate_trades(std::shared_ptr<grpc::ChannelCredentials> credentials,
   }
   // ... CS101: the last batch needs to be uploaded too ...
   append_to_request(mutation, yyyymmdd, "trades", trades);
-  mutate_with_retries(*bt_stub, mutation);
+  client.mutate_rows(std::move(mutation), bigtable_api_samples::backoff_config());
 
   auto elapsed = steady_clock::now() - upload_start;
   std::cout << count << " trades in " << chunk_count
@@ -273,9 +272,10 @@ void collate_quotes(std::shared_ptr<grpc::ChannelCredentials> credentials,
   // ... notice that Bigtable has separate endpoints for different APIs,
   // we are going to upload some data, so the correct endpoint is:
   auto channel = grpc::CreateChannel("bigtable.googleapis.com", credentials);
-
   std::unique_ptr<bigtable::Bigtable::Stub> bt_stub(
       bigtable::Bigtable::NewStub(channel));
+
+  bigtable_api_samples::client client(credentials);
 
   // ... prepare the request to update the destination table ...
   bigtable::MutateRowsRequest mutation;
@@ -352,7 +352,8 @@ void collate_quotes(std::shared_ptr<grpc::ChannelCredentials> credentials,
           if (not quotes.ticker().empty()) {
             append_to_request(mutation, yyyymmdd, "quotes", quotes);
             if (mutation.entries_size() >= batch_size) {
-              mutate_with_retries(*bt_stub, mutation);
+              client.mutate_rows(std::move(mutation), bigtable_api_samples::backoff_config());
+              mutation.set_table_name(table_prefix + "daily");
             }
           }
           quotes.set_ticker(q.ticker());
@@ -380,88 +381,11 @@ void collate_quotes(std::shared_ptr<grpc::ChannelCredentials> credentials,
   }
   // ... CS101: the last batch needs to be uploaded too ...
   append_to_request(mutation, yyyymmdd, "quotes", quotes);
-  mutate_with_retries(*bt_stub, mutation);
+  client.mutate_rows(std::move(mutation), bigtable_api_samples::backoff_config());
 
   auto elapsed = steady_clock::now() - upload_start;
   std::cout << count << " quotes in " << chunk_count
             << " chunks.  elapsed-time="
             << duration_cast<seconds>(elapsed).count() << "s" << std::endl;
-}
-
-bool should_retry(int code) {
-  return (code == grpc::ABORTED or code == grpc::UNAVAILABLE or
-          code == grpc::DEADLINE_EXCEEDED);
-}
-
-void mutate_with_retries(bigtable::Bigtable::Stub& bt_stub,
-                         bigtable::MutateRowsRequest& request) {
-  using namespace std::chrono_literals;
-  // These should be parameters in a real application, but in a demon we can
-  // hardcode all kinds of stuff ...
-  int const max_retries = 100;
-  // ... do an exponential backoff for retries ...
-  auto const initial_backoff = 10ms;
-  auto const maximum_backoff = 5min;
-
-  auto backoff = initial_backoff;
-  char const* retry_msg = "retrying .";
-  for (int i = 0; i != max_retries; ++i) {
-    // ... a variable to prepare the next retry ...
-    bigtable::MutateRowsRequest tmp;
-    // ... a variable to accumulate any permanent errors in this request ...
-    std::ostringstream os;
-
-    // ... MutateRows() is a streaming RPC call, make the call and read from the
-    // stream ...
-    grpc::ClientContext ctx;
-    auto stream = bt_stub.MutateRows(&ctx, request);
-    bigtable::MutateRowsResponse response;
-    while (stream->Read(&response)) {
-      // ... save the partial results to either `tmp` or `os` ...
-      for (auto const& entry : response.entries()) {
-        auto& status = entry.status();
-        if (status.code() == grpc::OK) {
-          continue;
-        }
-        if (not should_retry(status.code())) {
-          // ... permanent error, save all of them for later ...
-          std::string details;
-          (void)google::protobuf::TextFormat::PrintToString(entry, &details);
-          os << "permanent error for #" << entry.index() << ": "
-             << status.message() << " [" << status.code() << "] " << details
-             << "\n";
-        } else {
-          tmp.add_entries()->Swap(request.mutable_entries(entry.index()));
-        }
-      }
-    }
-    if (not os.str().empty()) {
-      // ... there was at least one permanent error, abort ...
-      throw std::runtime_error(os.str());
-    }
-    if (tmp.entries_size() == 0) {
-      // ... nothing to retry, just return ...
-      if (i > 0) {
-        std::cout << " done" << std::endl;
-      }
-      request.mutable_entries()->Clear();
-      return;
-    }
-    // ... prepare the next request ...
-    tmp.mutable_table_name()->swap(*request.mutable_table_name());
-    tmp.Swap(&request);
-    backoff = backoff * 2;
-    if (backoff > maximum_backoff) {
-      backoff = maximum_backoff;
-    }
-    // ... we should randomize this sleep to avoid synchronized
-    // backoffs when running multiple clients, that is beyond the
-    // scope of a simple demo like this one ...
-    std::this_thread::sleep_for(backoff);
-    // ... give the user some sense of progress ...
-    std::cout << retry_msg << std::flush;
-    retry_msg = ".";
-  }
-  throw std::runtime_error("Could not complete mutation after maximum retries");
 }
 }  // anonymous namespace
