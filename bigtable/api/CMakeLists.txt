@@ -102,9 +102,21 @@ include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 ################################################################
 # Create targets here ...
 
-# ... discover all the generated Google API files and turn them into a
-# static library ...
+# ... create a library with the generated files from the relevant protos ...
 add_library(googleapis ${PROTO_SOURCES} ${PROTO_HDRS} ${GRPCPP_SOURCES} ${GRPCPP_HDRS})
+
+# ... create a library with some simple classes shared by the examples ...
+PROTOBUF_GENERATE_CPP(TAQ_PROTO_SRCS TAQ_PROTO_HDRS ${PROJECT_SOURCE_DIR}/taq.proto)
+add_library(bigtable_api_samples
+  parse_taq_line.h
+  parse_taq_line.cc
+  backoff_config.h
+  backoff_config.cc
+  client.h
+  client.cc
+  ${TAQ_PROTO_HRDS}
+  ${TAQ_PROTO_SRCS})
+target_link_libraries(bigtable_api_samples googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
 add_executable(list_instances list_instances.cc)
 target_link_libraries(list_instances googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
@@ -124,13 +136,14 @@ target_link_libraries(delete_table googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARI
 add_executable(list_tables list_tables.cc)
 target_link_libraries(list_tables googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
-PROTOBUF_GENERATE_CPP(TAQ_PROTO_SRCS TAQ_PROTO_HDRS ${PROJECT_SOURCE_DIR}/taq.proto)
+add_executable(upload_taq upload_taq.cc)
+target_link_libraries(upload_taq bigtable_api_samples googleapis
+  ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
-add_executable(upload_taq upload_taq.cc parse_taq_line.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
-target_link_libraries(upload_taq googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
+add_executable(upload_taq_batch upload_taq_batch.cc)
+target_link_libraries(upload_taq_batch bigtable_api_samples googleapis
+  ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
-add_executable(upload_taq_batch upload_taq_batch.cc parse_taq_line.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
-target_link_libraries(upload_taq_batch googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
-
-add_executable(read_rows read_rows.cc ${TAQ_PROTO_SRCS} ${TAQ_PROTO_HDRS})
-target_link_libraries(read_rows googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
+add_executable(read_rows read_rows.cc)
+target_link_libraries(read_rows bigtable_api_samples googleapis
+  ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})

@@ -95,9 +95,9 @@ These samples demonstrate how to call the [Google Cloud Bigtable API](https://cl
 
     ./upload_taq $PROJECT bt-test-instance quote-per-row NBBO.txt
 
-    ./upload_taq_batch $PROJECT bt-test-instance quote-per-row 20161024 NBBO.txt
+    ./upload_taq_batch $PROJECT bt-test-instance daily 20161024 NBBO.txt
 
-    ./read_row $PROJECT bt-test-instance quote-per-row 20161024
+    ./read_rows $PROJECT bt-test-instance daily 20161024
 
     ./delete_instance $PROJECT bt-test-instance
 
