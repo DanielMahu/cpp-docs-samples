@@ -24,25 +24,49 @@
 
 namespace bigtable {
 
-    // ... save ourselves some typing ...
-  namespace btproto = ::google::bigtable::v2;
+// ... save ourselves some typing ...
+namespace btproto = ::google::bigtable::v2;
+
+class Table;
 
 class Client {
  public:
   Client(std::shared_ptr<grpc::ChannelCredentials> credentials)
       : credentials_(credentials),
         channel_(grpc::CreateChannel("bigtable.googleapis.com", credentials)),
-        bt_stub_(btproto::Bigtable::NewStub(channel_))
-      {}
+        bt_stub_(btproto::Bigtable::NewStub(channel_)) {}
+
+  // Default constructor uses the default credentials
   Client() : Client(grpc::GoogleDefaultCredentials()) {}
+
+  // Create a Table object for use with the Data API. Never fails, all
+  // error checking happens during operations.
+  std::unique_ptr<Table> Open(const std::string& table_name);
 
  private:
   std::shared_ptr<grpc::ChannelCredentials> credentials_;
   std::shared_ptr<grpc::Channel> channel_;
   std::unique_ptr<btproto::Bigtable::Stub> bt_stub_;
+
+  friend class Table;
 };
 
 class Mutation {
+ public:
+  void Set(const std::string& family,
+           const std::string& column,
+           int timestamp,
+           const std::string& value);
+
+  void DeleteCellsInColumn(const std::string& family,
+                           const std::string& column);
+
+  google::protobuf::RepeatedPtrField<btproto::Mutation>& GetOps() {
+    return ops_;
+  }
+
+ private:
+  google::protobuf::RepeatedPtrField<btproto::Mutation> ops_;
 };
 
 class Table {
@@ -55,7 +79,7 @@ class Table {
     return table_name_;
   }
 
-  void Apply(const std::string& row, const Mutation& mutation);
+  grpc::Status Apply(const std::string& row, Mutation& mutation);
 
  private:
   const Client *client_;

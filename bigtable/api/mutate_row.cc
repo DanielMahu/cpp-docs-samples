@@ -13,16 +13,14 @@
 // limitations under the License.
 
 #include <grpc++/grpc++.h>
-
-//#include <ciso646>
 #include <iostream>
 
 #include "data.h"
 
 int main(int argc, char* argv[]) {
-  if (argc != 5) {
+  if (argc != 6) {
     std::cerr
-        << "Usage: mutate <project_id> <instance_id> <table> <row>"
+        << "Usage: mutate <project_id> <instance_id> <table> <row> <action>"
         << std::endl;
     return 1;
   }
@@ -30,17 +28,39 @@ int main(int argc, char* argv[]) {
   char const* instance_id = argv[2];
   char const* table_id = argv[3];
   char const* row = argv[4];
+  char const* action = argv[5];
+
+  char const* family = "cf1";
+  char const* column = "example";
+
+  bool should_set = !strncmp(action, "set", strlen("set"));
+  bool should_delete = !strncmp(action, "delete", strlen("delete"));
 
   bigtable::Client client;  // with no arguments, uses default credentials
 
   std::string table_name = std::string("projects/") + project_id +
                            "/instances/" + instance_id + "/tables/" + table_id;
 
-  bigtable::Mutation mutation;
-  bigtable::Table table(&client, table_name);
+  std::unique_ptr<bigtable::Table> table = client.Open(table_name);
 
-  std::cerr << "should mutate row " << row << "\n";
-  table.Apply(row, mutation);
+  bigtable::Mutation mutation;
+
+  if (should_set) {
+    mutation.Set(family, column, 0, "a test value");
+    std::cerr << "set row " << row << "\n";
+  }
+  if (should_delete) {
+    mutation.DeleteCellsInColumn(family, column);
+    std::cerr << "delete row " << row << "\n";
+  }
+
+  grpc::Status status = table->Apply(row, mutation);
+  if (not status.ok()) {
+    std::cerr << "Error in MutateRow() request: " << status.error_message()
+                << " [" << status.error_code() << "] " << status.error_details()
+                << std::endl;
+    return 1;
+  }
 
   return 0;
 }
