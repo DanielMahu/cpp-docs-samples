@@ -15,7 +15,8 @@
 #include <grpc++/grpc++.h>
 #include <iostream>
 
-#include "data.h"
+// TODO(dmahu): wanted to have <bigtable/client/data.h> here
+#include <client/data.h>
 
 int main(int argc, char* argv[]) {
   if (argc != 6) {
