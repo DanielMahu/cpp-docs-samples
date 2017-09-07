@@ -122,6 +122,8 @@ target_link_libraries(bigtable_api_samples googleapis ${GRPCPP_LIBRARIES} ${GRPC
 add_library(bigtable_data_api
   client/data.h
   client/data.cc
+  client/admin.h
+  client/admin.cc
   )
 target_link_libraries(bigtable_data_api googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 

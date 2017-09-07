@@ -15,8 +15,25 @@
 #include <grpc++/grpc++.h>
 #include <iostream>
 
-// TODO(dmahu): wanted to have <bigtable/client/data.h> here
+// TODO(dmahu): wanted to have <bigtable/client/___.h> here
 #include <client/data.h>
+#include <client/admin.h>
+
+
+std::string error_details(const grpc::Status& status) {
+  return status.error_message() + " [" +
+      std::to_string(status.error_code()) + "] " +
+      status.error_details();
+}
+
+
+#define RET_IF_FAIL(call) {                                            \
+  grpc::Status status = (call);                                        \
+  if (not status.ok()) {                                               \
+    std::cerr << "Error in "#call": " << error_details(status) << "\n";\
+    return 1;                                                          \
+  } }
+
 
 int main(int argc, char* argv[]) {
   if (argc != 6) {
@@ -34,6 +51,28 @@ int main(int argc, char* argv[]) {
   char const* family = "cf1";
   char const* column = "example";
 
+  // Part 1: create a table
+
+  bigtable::AdminClient admin(project_id, instance_id);  // default credentials
+  bigtable::TableConfiguration config;
+
+  // We add the column family at table creation. If the table already
+  // exists, but does not have a column family with this name, the
+  // mutation calls below will fail.
+  config.AddColumnFamily(family);
+
+  // Table creation should be a rare event; we are ignoring errors if
+  // the table already exists.
+  {
+    grpc::Status status = admin.CreateTable(table_id, config);
+    if (not status.ok() and
+        (status.error_code() != grpc::ALREADY_EXISTS)) {
+      std::cerr << "Error in CreateTable: " << error_details(status) << "\n";
+      return 1;
+    }
+  }
+
+  // Part 2: set or delete, then read
   bool should_set = !strncmp(action, "set", strlen("set"));
   bool should_delete = !strncmp(action, "delete", strlen("delete"));
 
@@ -55,16 +94,10 @@ int main(int argc, char* argv[]) {
     std::cerr << "delete row " << row << "\n";
   }
 
-  grpc::Status status = table->Apply(row, mutation);
-  if (not status.ok()) {
-    std::cerr << "Error in Apply(): " << status.error_message()
-                << " [" << status.error_code() << "] " << status.error_details()
-                << std::endl;
-    return 1;
-  }
+  RET_IF_FAIL(table->Apply(row, mutation));
 
   bigtable::RowSet rs;
-  status = table->ReadRows(rs, [](const bigtable::RowPart &rp){
+  RET_IF_FAIL(table->ReadRows(rs, [](const bigtable::RowPart &rp){
       std::cout << "row " << rp.row() << "\n";
       for (const auto& cell : rp) {
         std::cout << "  " << cell.family << ":"
@@ -73,13 +106,7 @@ int main(int argc, char* argv[]) {
                   << cell.value << "\n";
       }
       return true;
-    });
-  if (not status.ok()) {
-    std::cerr << "Error in ReadRows(): " << status.error_message()
-                << " [" << status.error_code() << "] " << status.error_details()
-                << std::endl;
-    return 1;
-  }
+    }));
 
   return 0;
 }
