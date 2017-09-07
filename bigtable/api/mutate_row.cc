@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
   bigtable::Mutation mutation;
 
   if (should_set) {
-    mutation.Set(family, column, 0, "a test value");
+    mutation.Set(family, column, 42000, "a test value");
     std::cerr << "set row " << row << "\n";
   }
   if (should_delete) {
@@ -57,7 +57,25 @@ int main(int argc, char* argv[]) {
 
   grpc::Status status = table->Apply(row, mutation);
   if (not status.ok()) {
-    std::cerr << "Error in MutateRow() request: " << status.error_message()
+    std::cerr << "Error in Apply(): " << status.error_message()
+                << " [" << status.error_code() << "] " << status.error_details()
+                << std::endl;
+    return 1;
+  }
+
+  bigtable::RowSet rs;
+  status = table->ReadRows(rs, [](const bigtable::RowPart &rp){
+      std::cout << "row " << rp.row() << "\n";
+      for (const auto& cell : rp) {
+        std::cout << "  " << cell.family << ":"
+                  << cell.column << "@"
+                  << cell.timestamp << " = "
+                  << cell.value << "\n";
+      }
+      return true;
+    });
+  if (not status.ok()) {
+    std::cerr << "Error in ReadRows(): " << status.error_message()
                 << " [" << status.error_code() << "] " << status.error_details()
                 << std::endl;
     return 1;

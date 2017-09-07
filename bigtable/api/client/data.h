@@ -16,8 +16,10 @@
 #define BIGTABLE_CLIENT_DATA_H_
 
 #include <string>
+#include <functional>
+#include <vector>
 
-#include "backoff_config.h"
+// #include "backoff_config.h"
 
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <grpc++/grpc++.h>
@@ -69,17 +71,56 @@ class Mutation {
   google::protobuf::RepeatedPtrField<btproto::Mutation> ops_;
 };
 
+// TODO(dmahu): this is a stub
+class RowSet {
+};
+
+struct Cell {
+  std::string row;
+  std::string family;
+  std::string column;
+  int64_t timestamp;
+
+  std::string value;
+};
+
+// Row returned by a read call, might not contain all contents
+// of the row -- depending on the filter applied
+class RowPart {
+ public:
+  using const_iterator = std::vector<Cell>::const_iterator;
+
+  const std::string& row() const { return row_; }
+
+  // Allow direct iteration over cells.
+  const_iterator begin() const { return cells_.cbegin(); }
+  const_iterator end() const { return cells_.cend(); }
+
+  void set_row(const std::string& row) { row_ = row; }
+
+  // Internal functions
+  void AddCell(const Cell& cell) { cells_.push_back(cell); }
+  void Reset() { cells_.clear(); }
+
+ private:
+  std::vector<Cell> cells_;
+  std::string row_;
+};
+
 class Table {
  public:
   Table(const Client *client, const std::string& table_name)
     : client_(client),
       table_name_(table_name) {}
 
-  const std::string& GetTableName() const {
+  const std::string& table_name() const {
     return table_name_;
   }
 
   grpc::Status Apply(const std::string& row, Mutation& mutation);
+
+  grpc::Status ReadRows(const RowSet& rows,
+                        std::function<bool(const RowPart &)> f);
 
  private:
   const Client *client_;

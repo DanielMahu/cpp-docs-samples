@@ -36,6 +36,57 @@ grpc::Status Table::Apply(const std::string& row, Mutation& mutation) {
   return status;
 }
 
+grpc::Status Table::ReadRows(
+    const RowSet& rows,
+    std::function<bool(const RowPart &)> f) {
+
+  btproto::ReadRowsRequest request;
+  request.set_table_name(table_name_);
+
+  grpc::ClientContext context;
+  auto stream = client_->bt_stub_->ReadRows(&context, request);
+  btproto::ReadRowsResponse response;
+  RowPart row;
+  Cell cell;
+
+  while (stream->Read(&response)) {
+    for (auto& chunk : response.chunks()) {
+      if (not chunk.row_key().empty()) {
+        row.set_row(chunk.row_key());
+      }
+      if (chunk.has_family_name()) {
+        cell.family = chunk.family_name().value();
+      }
+      if (chunk.has_qualifier()) {
+        cell.column = chunk.qualifier().value();
+      }
+      cell.timestamp = chunk.timestamp_micros();
+      if (chunk.value_size() > 0) {
+        cell.value.reserve(chunk.value_size());
+      }
+      cell.value.append(chunk.value());
+      if (chunk.value_size() == 0) {
+        row.AddCell(cell);
+        cell.value = "";
+      }
+      if (chunk.reset_row()) {
+        row.Reset();
+        cell = {};
+      } else if (chunk.commit_row()) {
+        // pass the row to the callback
+        if (not f(row)) {
+          // stop request: cancel and drain the stream
+          context.TryCancel();
+          while (stream->Read(&response)) {}
+          break;
+        }
+        row.Reset();
+      }
+    }
+  }
+  return stream->Finish();
+}
+
 void Mutation::Set(const std::string& family,
                    const std::string& column,
                    int timestamp,
