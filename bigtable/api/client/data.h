@@ -51,13 +51,18 @@ class Client {
   friend class Table;
 };
 
+// A mutation is made up from several operations. Member functions in
+// this class each add a mutation to the list of operations to
+// execute. The list is applied atomically for a row and in order.
 class Mutation {
  public:
+  // Set a single cell at a timestamp to the value given.
   void Set(const std::string& family,
            const std::string& column,
            int timestamp,
            const std::string& value);
 
+  // Delete all values in family:column.
   void DeleteCellsInColumn(const std::string& family,
                            const std::string& column);
 
@@ -96,7 +101,8 @@ class RowPart {
 
   void set_row(const std::string& row) { row_ = row; }
 
-  // Internal functions
+  // Internal functions; clients should not call these, which is
+  // promoted by always returning const values
   void AddCell(const Cell& cell) { cells_.push_back(cell); }
   void Reset() { cells_.clear(); }
 
@@ -115,9 +121,18 @@ class Table {
     return table_name_;
   }
 
+  // Attempts to apply the mutation to a row and returns the status
+  // from the call. The mutation argument may be cleared when this
+  // call returns.
   grpc::Status Apply(const std::string& row, Mutation& mutation);
 
-  grpc::Status ReadRows(const RowSet& rows,
+  // Reads all rows that match the provided filter, invoking the
+  // callback for each row. If the return value from the callback is
+  // `false`, stops without reading further.
+  //
+  // Returns the status of the call (which is an "Operation cancelled"
+  // error if the read was stopped by returning `false` in the callback).
+  grpc::Status ReadRows(const RowSet& row_filter,
                         std::function<bool(const RowPart &)> f);
 
  private:
