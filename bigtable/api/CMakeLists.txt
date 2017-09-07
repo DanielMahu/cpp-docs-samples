@@ -126,8 +126,8 @@ add_library(bigtable_data_api
 target_link_libraries(bigtable_data_api googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
 # a sample user of the client library
-add_executable(mutate_row mutate_row.cc)
-target_link_libraries(mutate_row bigtable_data_api googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
+add_executable(clapp clapp.cc)
+target_link_libraries(clapp bigtable_data_api googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
 
 add_executable(list_instances list_instances.cc)
 target_link_libraries(list_instances googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
