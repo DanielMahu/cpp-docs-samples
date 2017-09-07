@@ -31,19 +31,26 @@ class Table;
 
 class Client {
  public:
-  Client(std::shared_ptr<grpc::ChannelCredentials> credentials)
-      : credentials_(credentials),
+  Client(const std::string& project,
+         const std::string& instance,
+         std::shared_ptr<grpc::ChannelCredentials> credentials)
+      : project_(project),
+        instance_(instance),
+        credentials_(credentials),
         channel_(grpc::CreateChannel("bigtable.googleapis.com", credentials)),
         bt_stub_(btproto::Bigtable::NewStub(channel_)) {}
 
-  // Default constructor uses the default credentials
-  Client() : Client(grpc::GoogleDefaultCredentials()) {}
+  Client(const std::string& project,
+         const std::string& instance)
+      : Client(project, instance, grpc::GoogleDefaultCredentials()) {}
 
   // Create a Table object for use with the Data API. Never fails, all
   // error checking happens during operations.
-  std::unique_ptr<Table> Open(const std::string& table_name);
+  std::unique_ptr<Table> Open(const std::string& table_id);
 
  private:
+  std::string project_;
+  std::string instance_;
   std::shared_ptr<grpc::ChannelCredentials> credentials_;
   std::shared_ptr<grpc::Channel> channel_;
   std::unique_ptr<btproto::Bigtable::Stub> bt_stub_;

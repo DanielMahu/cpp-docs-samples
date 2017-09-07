@@ -76,13 +76,8 @@ int main(int argc, char* argv[]) {
   bool should_set = !strncmp(action, "set", strlen("set"));
   bool should_delete = !strncmp(action, "delete", strlen("delete"));
 
-  bigtable::Client client;  // with no arguments, uses default credentials
-
-  std::string table_name = std::string("projects/") + project_id +
-                           "/instances/" + instance_id + "/tables/" + table_id;
-
-  std::unique_ptr<bigtable::Table> table = client.Open(table_name);
-
+  bigtable::Client client(project_id, instance_id);  // default credentials
+  std::unique_ptr<bigtable::Table> table = client.Open(table_id);
   bigtable::Mutation mutation;
 
   if (should_set) {

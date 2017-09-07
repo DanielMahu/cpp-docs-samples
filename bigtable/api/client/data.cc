@@ -18,7 +18,9 @@
 
 namespace bigtable {
 
-std::unique_ptr<Table> Client::Open(const std::string& table_name) {
+std::unique_ptr<Table> Client::Open(const std::string& table_id) {
+  std::string table_name = std::string("projects/") + project_ +
+                           "/instances/" + instance_ + "/tables/" + table_id;
   std::unique_ptr<Table> table(new Table(this, table_name));
   return table;
 }
