@@ -27,7 +27,7 @@ grpc::Status Table::Apply(const std::string& row, Mutation& mutation) {
   btproto::MutateRowRequest request;
   request.set_table_name(table_name_);
   request.set_row_key(row);
-  request.mutable_mutations()->Swap(&mutation.GetOps());
+  request.mutable_mutations()->Swap(&mutation.ops());
 
   btproto::MutateRowResponse response;
   grpc::ClientContext client_context;

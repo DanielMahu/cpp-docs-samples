@@ -19,8 +19,6 @@
 #include <functional>
 #include <vector>
 
-// #include "backoff_config.h"
-
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <grpc++/grpc++.h>
 
@@ -63,7 +61,7 @@ class Mutation {
   void DeleteCellsInColumn(const std::string& family,
                            const std::string& column);
 
-  google::protobuf::RepeatedPtrField<btproto::Mutation>& GetOps() {
+  google::protobuf::RepeatedPtrField<btproto::Mutation>& ops() {
     return ops_;
   }
 
