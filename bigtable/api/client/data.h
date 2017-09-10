@@ -66,7 +66,7 @@ class Mutation {
   // Set a single cell at a timestamp to the value given.
   void Set(const std::string& family,
            const std::string& column,
-           int timestamp,
+           int64_t timestamp,
            const std::string& value);
 
   // Delete all values in family:column.

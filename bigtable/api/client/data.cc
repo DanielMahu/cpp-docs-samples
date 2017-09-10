@@ -91,7 +91,7 @@ grpc::Status Table::ReadRows(
 
 void Mutation::Set(const std::string& family,
                    const std::string& column,
-                   int timestamp,
+                   int64_t timestamp,
                    const std::string& value) {
   auto* set_cell = ops_.Add()->mutable_set_cell();
   set_cell->set_family_name(family);
