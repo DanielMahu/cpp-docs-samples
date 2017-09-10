@@ -14,6 +14,8 @@
 
 #include "admin.h"
 
+namespace btaproto = ::google::bigtable::admin::v2;
+
 namespace bigtable {
 
 void TableConfiguration::AddColumnFamily(const std::string& name,

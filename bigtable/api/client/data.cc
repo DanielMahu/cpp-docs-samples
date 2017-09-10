@@ -16,6 +16,8 @@
 
 #include "data.h"
 
+namespace btproto = ::google::bigtable::v2;
+
 namespace bigtable {
 
 std::unique_ptr<Table> Client::Open(const std::string& table_id) {

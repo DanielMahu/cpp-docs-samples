@@ -24,16 +24,13 @@
 
 namespace bigtable {
 
-// ... save ourselves some typing ...
-namespace btaproto = ::google::bigtable::admin::v2;
-
 // This is a garbage collection rule for a column family.
 class GCRule {
  public:
   // TODO(dmahu): GCRule is a stub
 
   // Internally used
-  void UpdateProto(btaproto::GcRule* proto_rule) const {}
+  void UpdateProto(google::bigtable::admin::v2::GcRule* proto_rule) const {}
 };
 
 // This class is used to pass configuration to the CreateTable() call.
@@ -66,8 +63,10 @@ class AdminClient {
       : project_(project),
         instance_(instance),
         credentials_(credentials),
-        channel_(grpc::CreateChannel("bigtableadmin.googleapis.com", credentials)),
-        bt_stub_(btaproto::BigtableTableAdmin::NewStub(channel_)) {}
+        channel_(grpc::CreateChannel("bigtableadmin.googleapis.com",
+                                     credentials)),
+        bt_stub_(google::bigtable::admin::v2::BigtableTableAdmin::NewStub(
+            channel_)) {}
 
   // Default constructor uses the default credentials
   AdminClient(const std::string& project,
@@ -86,7 +85,8 @@ class AdminClient {
   std::string instance_;
   std::shared_ptr<grpc::ChannelCredentials> credentials_;
   std::shared_ptr<grpc::Channel> channel_;
-  std::unique_ptr<btaproto::BigtableTableAdmin::Stub> bt_stub_;
+  std::unique_ptr<
+    google::bigtable::admin::v2::BigtableTableAdmin::Stub> bt_stub_;
 };
 
 }  // namespace bigtable

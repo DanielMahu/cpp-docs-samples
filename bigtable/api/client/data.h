@@ -24,9 +24,6 @@
 
 namespace bigtable {
 
-// ... save ourselves some typing ...
-namespace btproto = ::google::bigtable::v2;
-
 class Table;
 
 class Client {
@@ -38,7 +35,7 @@ class Client {
         instance_(instance),
         credentials_(credentials),
         channel_(grpc::CreateChannel("bigtable.googleapis.com", credentials)),
-        bt_stub_(btproto::Bigtable::NewStub(channel_)) {}
+        bt_stub_(google::bigtable::v2::Bigtable::NewStub(channel_)) {}
 
   Client(const std::string& project,
          const std::string& instance)
@@ -53,7 +50,7 @@ class Client {
   std::string instance_;
   std::shared_ptr<grpc::ChannelCredentials> credentials_;
   std::shared_ptr<grpc::Channel> channel_;
-  std::unique_ptr<btproto::Bigtable::Stub> bt_stub_;
+  std::unique_ptr<google::bigtable::v2::Bigtable::Stub> bt_stub_;
 
   friend class Table;
 };
@@ -73,12 +70,12 @@ class Mutation {
   void DeleteCellsInColumn(const std::string& family,
                            const std::string& column);
 
-  google::protobuf::RepeatedPtrField<btproto::Mutation>& ops() {
+  google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation>& ops() {
     return ops_;
   }
 
  private:
-  google::protobuf::RepeatedPtrField<btproto::Mutation> ops_;
+  google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> ops_;
 };
 
 // TODO(dmahu): this is a stub
