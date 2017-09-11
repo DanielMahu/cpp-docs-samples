@@ -45,12 +45,16 @@ class Client {
   // error checking happens during operations.
   std::unique_ptr<Table> Open(const std::string& table_id);
 
+  google::bigtable::v2::Bigtable::StubInterface& Stub() const {
+    return *bt_stub_;
+  }
+
  private:
   std::string project_;
   std::string instance_;
   std::shared_ptr<grpc::ChannelCredentials> credentials_;
   std::shared_ptr<grpc::Channel> channel_;
-  std::unique_ptr<google::bigtable::v2::Bigtable::Stub> bt_stub_;
+  std::unique_ptr<google::bigtable::v2::Bigtable::StubInterface> bt_stub_;
 
   friend class Table;
 };

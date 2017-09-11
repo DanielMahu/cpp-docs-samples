@@ -35,7 +35,7 @@ grpc::Status Table::Apply(const std::string& row, Mutation& mutation) {
 
   btproto::MutateRowResponse response;
   grpc::ClientContext client_context;
-  grpc::Status status = client_->bt_stub_->MutateRow(
+  grpc::Status status = client_->Stub().MutateRow(
       &client_context, request, &response);
   return status;
 }
@@ -48,7 +48,7 @@ grpc::Status Table::ReadRows(
   request.set_table_name(table_name_);
 
   grpc::ClientContext context;
-  auto stream = client_->bt_stub_->ReadRows(&context, request);
+  auto stream = client_->Stub().ReadRows(&context, request);
   btproto::ReadRowsResponse response;
   RowPart row;
   Cell cell;
