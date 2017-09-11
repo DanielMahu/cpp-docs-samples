@@ -99,6 +99,9 @@ GRPC_GENERATE_CPP(GRPCPP_SOURCES GRPCPP_HDRS
         ${PROJECT_SOURCE_DIR}/googleapis/google/longrunning/operations.proto)
 include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 
+
+add_subdirectory(googletest)
+
 ################################################################
 # Create targets here ...
 
@@ -126,6 +129,15 @@ add_library(bigtable_data_api
   client/admin.cc
   )
 target_link_libraries(bigtable_data_api googleapis ${GRPCPP_LIBRARIES} ${GRPC_LIBRARIES} ${PROTOBUF_LIBRARIES})
+
+# tests for the client library
+include_directories(${gtest_SOURCE_DIR}/include)
+set(bigtable_client_test_sources
+  client/data_test.cc
+)
+add_executable(bigtable_client_test ${bigtable_client_test_sources})
+target_link_libraries(bigtable_client_test gtest_main)
+
 
 # a sample user of the client library
 add_executable(clapp clapp.cc)
