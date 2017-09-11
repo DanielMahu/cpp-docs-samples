@@ -132,6 +132,7 @@ target_link_libraries(bigtable_data_api googleapis ${GRPCPP_LIBRARIES} ${GRPC_LI
 
 # tests for the client library
 include_directories(${gtest_SOURCE_DIR}/include)
+include_directories(${gmock_SOURCE_DIR}/include)
 set(bigtable_client_test_sources
   client/data_test.cc
 )
