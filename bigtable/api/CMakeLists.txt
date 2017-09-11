@@ -137,7 +137,7 @@ set(bigtable_client_test_sources
   client/data_test.cc
 )
 add_executable(bigtable_client_test ${bigtable_client_test_sources})
-target_link_libraries(bigtable_client_test gtest_main)
+target_link_libraries(bigtable_client_test bigtable_data_api gmock_main)
 
 
 # a sample user of the client library

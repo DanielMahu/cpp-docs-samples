@@ -143,6 +143,13 @@ class Table {
   grpc::Status ReadRows(const RowSet& row_filter,
                         std::function<bool(const RowPart &)> f);
 
+ protected:
+  // Protected for testability
+  grpc::Status ReadRowsFromStream(
+    grpc::ClientReaderInterface<google::bigtable::v2::ReadRowsResponse> *stream,
+    std::function<bool(const RowPart &)> row_callback,
+    std::function<void()> cancel_request);
+
  private:
   const Client *client_;
   std::string table_name_;

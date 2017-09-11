@@ -40,15 +40,10 @@ grpc::Status Table::Apply(const std::string& row, Mutation& mutation) {
   return status;
 }
 
-grpc::Status Table::ReadRows(
-    const RowSet& rows,
-    std::function<bool(const RowPart &)> f) {
-
-  btproto::ReadRowsRequest request;
-  request.set_table_name(table_name_);
-
-  grpc::ClientContext context;
-  auto stream = client_->Stub().ReadRows(&context, request);
+grpc::Status Table::ReadRowsFromStream(
+    grpc::ClientReaderInterface<google::bigtable::v2::ReadRowsResponse> *stream,
+    std::function<bool(const RowPart &)> row_callback,
+    std::function<void()> cancel_request) {
   btproto::ReadRowsResponse response;
   RowPart row;
   Cell cell;
@@ -78,9 +73,9 @@ grpc::Status Table::ReadRows(
         cell = {};
       } else if (chunk.commit_row()) {
         // pass the row to the callback
-        if (not f(row)) {
+        if (not row_callback(row)) {
           // stop request: cancel and drain the stream
-          context.TryCancel();
+          cancel_request();
           while (stream->Read(&response)) {}
           break;
         }
@@ -89,6 +84,19 @@ grpc::Status Table::ReadRows(
     }
   }
   return stream->Finish();
+}
+
+grpc::Status Table::ReadRows(
+    const RowSet& rows,
+    std::function<bool(const RowPart &)> row_callback) {
+
+  btproto::ReadRowsRequest request;
+  request.set_table_name(table_name_);
+
+  grpc::ClientContext context;
+  return ReadRowsFromStream(client_->Stub().ReadRows(&context, request).get(),
+                            row_callback,
+                            [&context](){ context.TryCancel(); });
 }
 
 void Mutation::Set(const std::string& family,
