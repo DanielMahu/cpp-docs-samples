@@ -91,17 +91,17 @@ int main(int argc, char* argv[]) {
 
   RET_IF_FAIL(table->Apply(row, mutation));
 
-  bigtable::RowSet rs;
-  RET_IF_FAIL(table->ReadRows(rs, [](const bigtable::RowPart &rp){
-      std::cout << "row " << rp.row() << "\n";
-      for (const auto& cell : rp) {
-        std::cout << "  " << cell.family << ":"
-                  << cell.column << "@"
-                  << cell.timestamp << " = "
-                  << cell.value << "\n";
-      }
-      return true;
-    }));
+  // bigtable::RowSet rs;
+  // RET_IF_FAIL(table->ReadRows(rs, [](const bigtable::RowPart &rp){
+  //     std::cout << "row " << rp.row() << "\n";
+  //     for (const auto& cell : rp) {
+  //       std::cout << "  " << cell.family << ":"
+  //                 << cell.column << "@"
+  //                 << cell.timestamp << " = "
+  //                 << cell.value << "\n";
+  //     }
+  //     return true;
+  //   }));
 
   return 0;
 }

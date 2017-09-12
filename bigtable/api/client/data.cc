@@ -40,6 +40,8 @@ grpc::Status Table::Apply(const std::string& row, Mutation& mutation) {
   return status;
 }
 
+
+
 grpc::Status Table::ReadRowsFromStream(
     grpc::ClientReaderInterface<google::bigtable::v2::ReadRowsResponse> *stream,
     std::function<bool(const RowPart &)> row_callback,
@@ -86,17 +88,24 @@ grpc::Status Table::ReadRowsFromStream(
   return stream->Finish();
 }
 
-grpc::Status Table::ReadRows(
-    const RowSet& rows,
-    std::function<bool(const RowPart &)> row_callback) {
+grpc::Status Table::ReadStream::FinalStatus() {
+  btproto::ReadRowsResponse response;
+  while (stream_->Read(&response)) {}
+  return stream_->Finish();
+}
 
+void Table::ReadStream::Cancel() {
+  context_->TryCancel();
+}
+
+std::unique_ptr<Table::ReadStream> Table::ReadRows(
+    const RowSet& rows) {
   btproto::ReadRowsRequest request;
   request.set_table_name(table_name_);
-
-  grpc::ClientContext context;
-  return ReadRowsFromStream(client_->Stub().ReadRows(&context, request).get(),
-                            row_callback,
-                            [&context](){ context.TryCancel(); });
+  auto context = std::make_unique<grpc::ClientContext>();
+  return std::make_unique<Table::ReadStream>(
+      std::move(context),
+      client_->Stub().ReadRows(context.get(), request));
 }
 
 void Mutation::Set(const std::string& family,

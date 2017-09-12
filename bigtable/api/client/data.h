@@ -121,6 +121,29 @@ class RowPart {
 
 class Table {
  public:
+  class ReadStream {
+   public:
+    class View { };
+    void Cancel();
+    grpc::Status FinalStatus();
+    View& Rows() { return row_view_; }
+    View& Cells() { return cell_view_; }
+    View& Values() { return value_view_; }
+
+    ReadStream(std::unique_ptr<grpc::ClientContext> context,
+               std::unique_ptr<grpc::ClientReaderInterface<
+                    google::bigtable::v2::ReadRowsResponse>> stream)
+        : context_(std::move(context)),
+          stream_(std::move(stream)) {}
+   private:
+    std::unique_ptr<grpc::ClientContext> context_;
+    std::unique_ptr<grpc::ClientReaderInterface<
+                    google::bigtable::v2::ReadRowsResponse>> stream_;
+    View row_view_;
+    View cell_view_;
+    View value_view_;
+  };
+
   Table(const Client *client, const std::string& table_name)
     : client_(client),
       table_name_(table_name) {}
@@ -134,14 +157,7 @@ class Table {
   // call returns.
   grpc::Status Apply(const std::string& row, Mutation& mutation);
 
-  // Reads all rows that match the provided filter, invoking the
-  // callback for each row. If the return value from the callback is
-  // `false`, stops without reading further.
-  //
-  // Returns the status of the call (which is an "Operation cancelled"
-  // error if the read was stopped by returning `false` in the callback).
-  grpc::Status ReadRows(const RowSet& row_filter,
-                        std::function<bool(const RowPart &)> f);
+  std::unique_ptr<ReadStream> ReadRows(const RowSet& row_filter);
 
  protected:
   // Protected for testability
