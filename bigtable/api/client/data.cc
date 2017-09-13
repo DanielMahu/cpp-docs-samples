@@ -40,8 +40,6 @@ grpc::Status Table::Apply(const std::string& row, Mutation& mutation) {
   return status;
 }
 
-
-
 grpc::Status Table::ReadRowsFromStream(
     grpc::ClientReaderInterface<google::bigtable::v2::ReadRowsResponse> *stream,
     std::function<bool(const RowPart &)> row_callback,
@@ -89,13 +87,43 @@ grpc::Status Table::ReadRowsFromStream(
 }
 
 grpc::Status Table::ReadStream::FinalStatus() {
-  btproto::ReadRowsResponse response;
-  while (stream_->Read(&response)) {}
   return stream_->Finish();
 }
 
 void Table::ReadStream::Cancel() {
   context_->TryCancel();
+  // Also drain any data left unread
+  btproto::ReadRowsResponse response;
+  while (stream_->Read(&response)) {}
+  // Reached the end
+  is_at_end_ = true;
+}
+
+void Table::ReadStream::Advance() {
+  // TODO
+  std::cerr << "Advance called\n";
+  if (response_is_valid_) {
+    // process...
+  }
+
+  response_is_valid_ = stream_->Read(&response_);
+  is_at_end_ = true;
+}
+
+Table::ReadStream::iterator& Table::ReadStream::iterator::operator++() {
+  owner_->Advance();
+  return *this;
+}
+
+bool Table::ReadStream::iterator::operator==(
+    const Table::ReadStream::iterator& other) const {
+  if (owner_ != other.owner_)
+    return false;
+  // All iterators become equal at end of input
+  if (owner_->AtEnd())
+    return true;
+  // otherwise we have just two classes
+  return is_end_ == other.is_end_;
 }
 
 std::unique_ptr<Table::ReadStream> Table::ReadRows(

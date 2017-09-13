@@ -123,40 +123,77 @@ class Table {
  public:
   class ReadStream {
    public:
-    class View { };
-    void Cancel();
-    grpc::Status FinalStatus();
-    View& Rows() { return row_view_; }
-    View& Cells() { return cell_view_; }
-    View& Values() { return value_view_; }
+    class iterator : public std::iterator<std::input_iterator_tag, RowPart> {
+     public:
+      iterator(ReadStream* owner, bool is_end)
+        : owner_(owner), is_end_(is_end) { }
 
+      iterator& operator++();
+      const RowPart& operator*() { return owner_->row_; }
+      const RowPart* operator->() { return &owner_->row_; }
+      bool operator==(const iterator& that) const;
+      bool operator!=(const iterator& that) const { return !(*this == that); }
+     private:
+      ReadStream* const owner_;
+      bool is_end_;
+    };
+
+    typedef iterator iterator_type;
+    typedef const RowPart value_type;
+
+    // When constructing, a full row is read immediately. This is one
+    // way to make the iterator returned by begin() valid.
     ReadStream(std::unique_ptr<grpc::ClientContext> context,
                std::unique_ptr<grpc::ClientReaderInterface<
                     google::bigtable::v2::ReadRowsResponse>> stream)
         : context_(std::move(context)),
-          stream_(std::move(stream)) {}
+          stream_(std::move(stream)),
+          response_is_valid_(false),
+          is_at_end_(false),
+          begin_iter_(this, false),
+          end_iter_(this, true) {
+      Advance();
+    }
+
+    iterator& begin() { return begin_iter_; }
+    iterator& end() { return end_iter_; }
+
+    void Cancel();
+    grpc::Status FinalStatus();
+
    private:
+    void Advance();
+    bool AtEnd() { return is_at_end_; }
+
     std::unique_ptr<grpc::ClientContext> context_;
     std::unique_ptr<grpc::ClientReaderInterface<
                     google::bigtable::v2::ReadRowsResponse>> stream_;
-    View row_view_;
-    View cell_view_;
-    View value_view_;
+
+    // last read message from the stream
+    google::bigtable::v2::ReadRowsResponse response_;
+    bool response_is_valid_;
+    // a complete row, but invalid if is_at_end_
+    RowPart row_;
+    // end of stream was reached
+    bool is_at_end_;
+
+    iterator begin_iter_;
+    iterator end_iter_;
   };
 
   Table(const Client *client, const std::string& table_name)
     : client_(client),
       table_name_(table_name) {}
 
-  const std::string& table_name() const {
-    return table_name_;
-  }
+  const std::string& table_name() const { return table_name_; }
 
   // Attempts to apply the mutation to a row and returns the status
   // from the call. The mutation argument may be cleared when this
   // call returns.
   grpc::Status Apply(const std::string& row, Mutation& mutation);
 
+  // Returns a stream wrapper that can be used to iterate over the
+  // returned rows. Tries to parse a first row before returning.
   std::unique_ptr<ReadStream> ReadRows(const RowSet& row_filter);
 
  protected:
