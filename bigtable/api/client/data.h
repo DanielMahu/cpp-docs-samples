@@ -155,8 +155,8 @@ class Table {
       Advance();
     }
 
-    iterator& begin() { return begin_iter_; }
-    iterator& end() { return end_iter_; }
+    const iterator& begin() { return begin_iter_; }
+    const iterator& end() { return end_iter_; }
 
     void Cancel();
     grpc::Status FinalStatus();
