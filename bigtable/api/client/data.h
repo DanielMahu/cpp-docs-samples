@@ -163,6 +163,7 @@ class Table {
 
    private:
     void Advance();
+    void AdvanceChunk();
     bool AtEnd() { return is_at_end_; }
 
     std::unique_ptr<grpc::ClientContext> context_;
@@ -171,7 +172,11 @@ class Table {
 
     // last read message from the stream
     google::bigtable::v2::ReadRowsResponse response_;
+    // parser state
     bool response_is_valid_;
+    int chunk_;
+    Cell cell_;
+
     // a complete row, but invalid if is_at_end_
     RowPart row_;
     // end of stream was reached

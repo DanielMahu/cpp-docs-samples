@@ -99,15 +99,61 @@ void Table::ReadStream::Cancel() {
   is_at_end_ = true;
 }
 
-void Table::ReadStream::Advance() {
-  // TODO
-  std::cerr << "Advance called\n";
-  if (response_is_valid_) {
-    // process...
+// Moves the chunk index forward, reading another response if needed
+void Table::ReadStream::AdvanceChunk() {
+  if (!response_is_valid_ ||
+      (response_is_valid_ && chunk_ == response_.chunks_size() - 1)) {
+    response_is_valid_ = stream_->Read(&response_);
+    chunk_ = 0;
+  } else {
+    chunk_++;
   }
+}
 
-  response_is_valid_ = stream_->Read(&response_);
-  is_at_end_ = true;
+// Moves forward one row at a time, setting is_at_end_ when the stream ends
+void Table::ReadStream::Advance() {
+
+  row_ = {};
+  cell_ = {};
+
+  while (1) {
+
+    AdvanceChunk();
+    if (!response_is_valid_) {
+      is_at_end_ = true;
+      return;
+    }
+
+    // TODO(dmahu): validate the reply; at the moment it is used blindly
+
+    auto& chunk = response_.chunks(chunk_);
+
+    if (not chunk.row_key().empty()) {
+      row_.set_row(chunk.row_key());
+    }
+    if (chunk.has_family_name()) {
+      cell_.family = chunk.family_name().value();
+    }
+    if (chunk.has_qualifier()) {
+      cell_.column = chunk.qualifier().value();
+    }
+    cell_.timestamp = chunk.timestamp_micros();
+    if (chunk.value_size() > 0) {
+      cell_.value.reserve(chunk.value_size());
+    }
+    cell_.value.append(chunk.value());
+    if (chunk.value_size() == 0) {
+      row_.AddCell(cell_);
+      cell_.value = "";
+    }
+    if (chunk.reset_row()) {
+      row_ = {};
+      cell_ = {};
+    } else if (chunk.commit_row()) {
+      return;
+    }
+
+  }
 }
 
 Table::ReadStream::iterator& Table::ReadStream::iterator::operator++() {
