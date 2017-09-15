@@ -155,8 +155,8 @@ class Table {
       Advance();
     }
 
-    const iterator& begin() { return begin_iter_; }
-    const iterator& end() { return end_iter_; }
+    const iterator& begin() const { return begin_iter_; }
+    const iterator& end() const { return end_iter_; }
 
     void Cancel();
     grpc::Status FinalStatus();
@@ -164,7 +164,7 @@ class Table {
    private:
     void Advance();
     void AdvanceChunk();
-    bool AtEnd() { return is_at_end_; }
+    bool AtEnd() const { return is_at_end_; }
 
     std::unique_ptr<grpc::ClientContext> context_;
     std::unique_ptr<grpc::ClientReaderInterface<
