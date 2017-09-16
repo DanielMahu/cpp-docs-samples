@@ -39,11 +39,11 @@ class TableForTesting : public bigtable::Table {
   grpc::Status ReadRowsFromFixture(const std::vector<ReadRowsResponse>& fixture,
                                    std::vector<bigtable::RowPart>* rows,
                                    int stop_after) {
-    MockClientReader<ReadRowsResponse> stream;
+    auto stream = std::make_unique<MockClientReader<ReadRowsResponse>>();
     grpc::Status stream_status;
 
     int read_count = 0;
-    auto stream_read = [&stream, &read_count, &fixture]
+    auto fake_read = [&read_count, &fixture]
                        (ReadRowsResponse* response) {
       if (read_count < fixture.size()) {
         *response = fixture[read_count];
@@ -51,22 +51,25 @@ class TableForTesting : public bigtable::Table {
       return read_count++ < fixture.size();
     };
 
-    EXPECT_CALL(stream, Finish())
+    EXPECT_CALL(*stream, Finish())
         .WillOnce(ReturnPointee(&stream_status));
-    EXPECT_CALL(stream, Read(_))
+    EXPECT_CALL(*stream, Read(_))
         .Times(fixture.size() + 1)
-        .WillRepeatedly(Invoke(stream_read));
+        .WillRepeatedly(Invoke(fake_read));
 
-    auto process_row = [&rows, stop_after](const bigtable::RowPart &r) {
-      rows->push_back(r);
-      return rows->size() != stop_after;
-    };
-    auto request_cancel = [&stream_status]() {
-      // after a cancel is requested, typically the stream returns this error:
-      stream_status = grpc::Status(grpc::CANCELLED, "");
-    };
+    bigtable::Table::ReadStream read_stream(
+        std::make_unique<grpc::ClientContext>(),
+        std::move(stream));
 
-    return ReadRowsFromStream(&stream, process_row, request_cancel);
+    for (const auto& row : read_stream) {
+      rows->push_back(row);
+      if (rows->size() == stop_after) {
+        read_stream.Cancel();
+        stream_status = grpc::Status(grpc::CANCELLED, "");
+      }
+    }
+
+    return read_stream.FinalStatus();
   }
 };
 

@@ -40,52 +40,6 @@ grpc::Status Table::Apply(const std::string& row, Mutation& mutation) {
   return status;
 }
 
-grpc::Status Table::ReadRowsFromStream(
-    grpc::ClientReaderInterface<google::bigtable::v2::ReadRowsResponse> *stream,
-    std::function<bool(const RowPart &)> row_callback,
-    std::function<void()> cancel_request) {
-  btproto::ReadRowsResponse response;
-  RowPart row;
-  Cell cell;
-
-  while (stream->Read(&response)) {
-    for (auto& chunk : response.chunks()) {
-      if (not chunk.row_key().empty()) {
-        row.set_row(chunk.row_key());
-      }
-      if (chunk.has_family_name()) {
-        cell.family = chunk.family_name().value();
-      }
-      if (chunk.has_qualifier()) {
-        cell.column = chunk.qualifier().value();
-      }
-      cell.timestamp = chunk.timestamp_micros();
-      if (chunk.value_size() > 0) {
-        cell.value.reserve(chunk.value_size());
-      }
-      cell.value.append(chunk.value());
-      if (chunk.value_size() == 0) {
-        row.AddCell(cell);
-        cell.value = "";
-      }
-      if (chunk.reset_row()) {
-        row.Reset();
-        cell = {};
-      } else if (chunk.commit_row()) {
-        // pass the row to the callback
-        if (not row_callback(row)) {
-          // stop request: cancel and drain the stream
-          cancel_request();
-          while (stream->Read(&response)) {}
-          break;
-        }
-        row.Reset();
-      }
-    }
-  }
-  return stream->Finish();
-}
-
 grpc::Status Table::ReadStream::FinalStatus() {
   return stream_->Finish();
 }

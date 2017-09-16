@@ -201,13 +201,6 @@ class Table {
   // returned rows. Tries to parse a first row before returning.
   std::unique_ptr<ReadStream> ReadRows(const RowSet& row_filter);
 
- protected:
-  // Protected for testability
-  grpc::Status ReadRowsFromStream(
-    grpc::ClientReaderInterface<google::bigtable::v2::ReadRowsResponse> *stream,
-    std::function<bool(const RowPart &)> row_callback,
-    std::function<void()> cancel_request);
-
  private:
   const Client *client_;
   std::string table_name_;
